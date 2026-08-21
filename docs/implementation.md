@@ -30,7 +30,7 @@
 - [x] Prisma schema drafted and migrated
 - [x] Health check route working
 - [ ] Finalize TRD, resolve open questions with mentor
-- [ ] Auth strategy decided (session-based vs NextAuth)
+- [x] Auth strategy decided: email/password with bcrypt, Access + Refresh Tokens in HTTP-only cookies, and role-based authorization
 
 ### Week 2 — Approvals + Auth Foundation
 - [ ] Wait for PRD/System Design approval
@@ -83,9 +83,11 @@
 
 ---
 
-## 5. Risks & Open Questions
+### Authentication (Resolved)
+- **Resolved:** The application will use custom email/password authentication with bcrypt password hashing and a dual-token JWT architecture (short-lived Access Token + Refresh Token) stored in secure HTTP-only cookies, paired with session tracking.
+- Candidate and Employer roles will be strictly enforced through role-based authorization on protected API routes and middleware.
 
-- **Auth depth:** Simple session-based vs NextAuth — needs decision before Week 2 starts, blocks everything downstream
+### Remaining Open Questions
 - **Real-time expectation:** Confirm with mentor whether polling satisfies the "real-time" requirement in the problem statement, or if SSE is expected
 - **Employer job scope:** One job per employer vs multiple — affects Job model relations, should be confirmed with PRD owner (Vidit) this week
 

@@ -142,8 +142,15 @@ Using a plain `String` with app-layer validation instead of a Prisma `enum` for 
 
 ---
 
-## 6. Open Questions
+## 6. Authentication (Resolved)
 
-- Do we need a `Session` or `Token` table for auth, or is this handled via NextAuth's own tables (which would extend this schema)?
+- **Resolved:** The application will use custom email/password authentication with bcrypt password hashing and dual-token JWTs (short-lived Access Token + Refresh Token) stored in secure HTTP-only cookies.
+- Candidate and Employer roles will be enforced through role-based authorization on protected API routes and middleware.
+- Optional `Session`/`RefreshToken` model can be stored in PostgreSQL for active session tracking and token rotation/invalidation.
+
+---
+
+## 7. Open Questions
+
 - Should `Job` have a `status` field too (open/closed), or is that out of scope for Sprint 1?
 - Confirm with Vidit: does the frontend need any denormalized/aggregate fields (e.g. `applicationCount` on Job) or will that always be computed via query?
