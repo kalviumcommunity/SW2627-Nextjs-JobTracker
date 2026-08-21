@@ -3,23 +3,39 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
+  provider = "postgresql"
 }
 
 model Candidate {
   id           String        @id @default(cuid())
   name         String
   email        String        @unique
+  passwordHash String
   applications Application[]
+  sessions     Session[]
   createdAt    DateTime      @default(now())
 }
 
 model Employer {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  jobs      Job[]
-  createdAt DateTime @default(now())
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  passwordHash String
+  jobs         Job[]
+  sessions     Session[]
+  createdAt    DateTime  @default(now())
+}
+
+model Session {
+  id               String     @id @default(cuid())
+  refreshTokenHash String     @unique
+  candidateId      String?
+  employerId       String?
+  candidate        Candidate? @relation(fields: [candidateId], references: [id])
+  employer         Employer?  @relation(fields: [employerId], references: [id])
+  expiresAt        DateTime
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
 }
 
 model Job {
