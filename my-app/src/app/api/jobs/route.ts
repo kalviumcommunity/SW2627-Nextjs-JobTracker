@@ -1,5 +1,120 @@
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { cookies } from "next/headers";
+import { verifyAccessToken } from "@/lib/auth/tokens";
 
-export async function GET() {
-  return NextResponse.json({ message: "Not implemented" }, { status: 501 });
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const employerId = searchParams.get("employerId");
+
+    const jobs = await prisma.job.findMany({
+      where: employerId ? { employerId } : undefined,
+      include: {
+        employer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        _count: {
+          select: {
+            applications: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return NextResponse.json({ jobs }, { status: 200 });
+  } catch {
+    return NextResponse.json(
+      { error: "Failed to fetch jobs" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get("accessToken")?.value;
+
+    const body = await request.json();
+    const { title, employerId: bodyEmployerId } = body;
+
+    if (!title || typeof title !== "string" || title.trim() === "") {
+      return NextResponse.json(
+        { error: "Job title is required" },
+        { status: 400 }
+      );
+    }
+
+    let employerId = bodyEmployerId;
+
+    if (token) {
+      try {
+        const payload = verifyAccessToken(token);
+        if (payload.role === "employer") {
+          employerId = payload.userId;
+        } else if (!employerId) {
+          return NextResponse.json(
+            { error: "Only employers can create job postings" },
+            { status: 403 }
+          );
+        }
+      } catch {
+        // Fall back to provided employerId if token check fails
+      }
+    }
+
+    if (!employerId) {
+      return NextResponse.json(
+        { error: "Employer ID or active employer session is required" },
+        { status: 401 }
+      );
+    }
+
+    const employer = await prisma.employer.findUnique({
+      where: { id: employerId },
+    });
+
+    if (!employer) {
+      return NextResponse.json(
+        { error: "Employer not found" },
+        { status: 404 }
+      );
+    }
+
+    const job = await prisma.job.create({
+      data: {
+        title: title.trim(),
+        employerId,
+      },
+      include: {
+        employer: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    return NextResponse.json(
+      {
+        message: "Job created successfully",
+        job,
+      },
+      { status: 201 }
+    );
+  } catch {
+    return NextResponse.json(
+      { error: "Failed to create job" },
+      { status: 500 }
+    );
+  }
 }
