@@ -10,27 +10,53 @@ export async function PATCH(request: Request) {
     const cookieStore = await cookies();
     const token = cookieStore.get("accessToken")?.value;
 
-    if (token) {
-      try {
-        const payload = verifyAccessToken(token);
-        if (payload.role !== "employer") {
-          return NextResponse.json(
-            { error: "Only employers can batch-update application statuses" },
-            { status: 403 }
-          );
-        }
-      } catch {
-        // Continue to input validation
-      }
+    if (!token) {
+      return NextResponse.json(
+        { error: "Authentication required. Please log in as an employer." },
+        { status: 401 }
+      );
     }
 
-    const body = await request.json();
+    let payload;
+    try {
+      payload = verifyAccessToken(token);
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid or expired access token" },
+        { status: 401 }
+      );
+    }
+
+    if (payload.role !== "employer") {
+      return NextResponse.json(
+        { error: "Only employers are authorized to batch-update applications" },
+        { status: 403 }
+      );
+    }
+
+    const employerId = payload.userId;
+
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid JSON request body" },
+        { status: 400 }
+      );
+    }
+
     const { applicationIds, newStatus, status } = body;
     const targetStatus = newStatus || status;
 
-    if (!applicationIds || !Array.isArray(applicationIds) || applicationIds.length === 0) {
+    if (
+      !applicationIds ||
+      !Array.isArray(applicationIds) ||
+      applicationIds.length === 0 ||
+      !applicationIds.every((id) => typeof id === "string" && id.trim().length > 0)
+    ) {
       return NextResponse.json(
-        { error: "applicationIds must be a non-empty array of strings" },
+        { error: "applicationIds must be a non-empty array of valid string IDs" },
         { status: 400 }
       );
     }
@@ -42,10 +68,32 @@ export async function PATCH(request: Request) {
       );
     }
 
+    // Find all applications belonging to this employer's jobs
+    const eligibleApplications = await prisma.application.findMany({
+      where: {
+        id: { in: applicationIds },
+        job: {
+          employerId: employerId,
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    const eligibleIds = eligibleApplications.map((app) => app.id);
+
+    if (eligibleIds.length === 0) {
+      return NextResponse.json(
+        { error: "No matching applications found belonging to your job postings" },
+        { status: 404 }
+      );
+    }
+
     const result = await prisma.application.updateMany({
       where: {
         id: {
-          in: applicationIds,
+          in: eligibleIds,
         },
       },
       data: {
@@ -57,6 +105,7 @@ export async function PATCH(request: Request) {
       {
         message: "Batch status updated successfully",
         count: result.count,
+        updatedStatus: targetStatus,
       },
       { status: 200 }
     );
