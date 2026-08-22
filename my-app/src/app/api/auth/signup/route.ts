@@ -7,20 +7,39 @@ import { createSession } from "@/lib/auth/session";
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-
-    const { name, email, password, role } = body;
-
-    if (!name || !email || !password || !role) {
+    let body;
+    try {
+      body = await request.json();
+    } catch {
       return NextResponse.json(
-        { error: "Name, email, password and role are required" },
+        { error: "Invalid JSON request body" },
         { status: 400 }
       );
     }
 
-    if (role !== "candidate" && role !== "employer") {
+    const { name, email, password, role } = body;
+
+    if (
+      typeof name !== "string" ||
+      typeof email !== "string" ||
+      typeof password !== "string" ||
+      typeof role !== "string" ||
+      !name.trim() ||
+      !email.trim() ||
+      !password
+    ) {
       return NextResponse.json(
-        { error: "Invalid role" },
+        { error: "Name, email, password and role are required strings" },
+        { status: 400 }
+      );
+    }
+
+    const trimmedRole = role.trim();
+    const trimmedEmail = email.trim().toLowerCase();
+
+    if (trimmedRole !== "candidate" && trimmedRole !== "employer") {
+      return NextResponse.json(
+        { error: "Invalid role. Must be 'candidate' or 'employer'" },
         { status: 400 }
       );
     }
@@ -33,11 +52,11 @@ export async function POST(request: Request) {
     }
 
     const existingCandidate = await prisma.candidate.findUnique({
-      where: { email },
+      where: { email: trimmedEmail },
     });
 
     const existingEmployer = await prisma.employer.findUnique({
-      where: { email },
+      where: { email: trimmedEmail },
     });
 
     if (existingCandidate || existingEmployer) {
@@ -51,11 +70,11 @@ export async function POST(request: Request) {
 
     let userId: string;
 
-    if (role === "candidate") {
+    if (trimmedRole === "candidate") {
       const candidate = await prisma.candidate.create({
         data: {
-          name,
-          email,
+          name: name.trim(),
+          email: trimmedEmail,
           passwordHash,
         },
       });
@@ -64,8 +83,8 @@ export async function POST(request: Request) {
     } else {
       const employer = await prisma.employer.create({
         data: {
-          name,
-          email,
+          name: name.trim(),
+          email: trimmedEmail,
           passwordHash,
         },
       });
@@ -73,13 +92,13 @@ export async function POST(request: Request) {
       userId = employer.id;
     }
 
-    const accessToken = createAccessToken(userId, role);
+    const accessToken = createAccessToken(userId, trimmedRole);
 
     const temporarySessionId = crypto.randomUUID();
 
     const refreshToken = createRefreshToken(userId, temporarySessionId);
 
-    const session = await createSession(userId, role, refreshToken);
+    const session = await createSession(userId, trimmedRole, refreshToken);
 
     const finalRefreshToken = createRefreshToken(userId, session.id);
 
@@ -100,9 +119,9 @@ export async function POST(request: Request) {
         message: "Signup successful",
         user: {
           id: userId,
-          name,
-          email,
-          role,
+          name: name.trim(),
+          email: trimmedEmail,
+          role: trimmedRole,
         },
       },
       { status: 201 }

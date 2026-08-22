@@ -7,18 +7,34 @@ import { createSession } from "@/lib/auth/session";
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { email, password } = body;
-
-    if (!email || !password) {
+    let body;
+    try {
+      body = await request.json();
+    } catch {
       return NextResponse.json(
-        { error: "Email and password are required" },
+        { error: "Invalid JSON request body" },
         { status: 400 }
       );
     }
 
-    let candidate = await prisma.candidate.findUnique({
-      where: { email },
+    const { email, password } = body;
+
+    if (
+      typeof email !== "string" ||
+      typeof password !== "string" ||
+      !email.trim() ||
+      !password
+    ) {
+      return NextResponse.json(
+        { error: "Email and password are required strings" },
+        { status: 400 }
+      );
+    }
+
+    const trimmedEmail = email.trim().toLowerCase();
+
+    const candidate = await prisma.candidate.findUnique({
+      where: { email: trimmedEmail },
     });
 
     let employer = null;
@@ -27,7 +43,7 @@ export async function POST(request: Request) {
 
     if (!user) {
       employer = await prisma.employer.findUnique({
-        where: { email },
+        where: { email: trimmedEmail },
       });
       if (employer) {
         user = employer as unknown as typeof candidate;
