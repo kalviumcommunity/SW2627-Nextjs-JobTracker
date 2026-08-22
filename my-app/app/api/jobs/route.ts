@@ -43,38 +43,48 @@ export async function POST(request: Request) {
     const cookieStore = await cookies();
     const token = cookieStore.get("accessToken")?.value;
 
-    const body = await request.json();
-    const { title, employerId: bodyEmployerId } = body;
-
-    if (!title || typeof title !== "string" || title.trim() === "") {
+    if (!token) {
       return NextResponse.json(
-        { error: "Job title is required" },
+        { error: "Authentication required. Please log in as an employer." },
+        { status: 401 }
+      );
+    }
+
+    let payload;
+    try {
+      payload = verifyAccessToken(token);
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid or expired access token" },
+        { status: 401 }
+      );
+    }
+
+    if (payload.role !== "employer") {
+      return NextResponse.json(
+        { error: "Only employers are authorized to create job postings" },
+        { status: 403 }
+      );
+    }
+
+    const employerId = payload.userId;
+
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid JSON request body" },
         { status: 400 }
       );
     }
 
-    let employerId = bodyEmployerId;
+    const { title } = body;
 
-    if (token) {
-      try {
-        const payload = verifyAccessToken(token);
-        if (payload.role === "employer") {
-          employerId = payload.userId;
-        } else if (!employerId) {
-          return NextResponse.json(
-            { error: "Only employers can create job postings" },
-            { status: 403 }
-          );
-        }
-      } catch {
-        // Fall back to provided employerId if token check fails
-      }
-    }
-
-    if (!employerId) {
+    if (!title || typeof title !== "string" || title.trim().length === 0) {
       return NextResponse.json(
-        { error: "Employer ID or active employer session is required" },
-        { status: 401 }
+        { error: "Job title is required and must be a non-empty string" },
+        { status: 400 }
       );
     }
 
@@ -84,7 +94,7 @@ export async function POST(request: Request) {
 
     if (!employer) {
       return NextResponse.json(
-        { error: "Employer not found" },
+        { error: "Employer account not found" },
         { status: 404 }
       );
     }
