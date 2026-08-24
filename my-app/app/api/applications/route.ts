@@ -5,36 +5,52 @@ import { verifyAccessToken } from "@/lib/auth/tokens";
 
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const candidateIdParam = searchParams.get("candidateId");
-    const employerIdParam = searchParams.get("employerId");
-    const jobIdParam = searchParams.get("jobId");
-
     const cookieStore = await cookies();
     const token = cookieStore.get("accessToken")?.value;
 
-    let candidateId = candidateIdParam;
-    let employerId = employerIdParam;
+    if (!token) {
+      return NextResponse.json(
+        { error: "Authentication required to view applications" },
+        { status: 401 }
+      );
+    }
 
-    if (token) {
-      try {
-        const payload = verifyAccessToken(token);
-        if (payload.role === "candidate" && !candidateId) {
-          candidateId = payload.userId;
-        } else if (payload.role === "employer" && !employerId) {
-          employerId = payload.userId;
-        }
-      } catch {
-        // Fallback to query params
-      }
+    let payload;
+    try {
+      payload = verifyAccessToken(token);
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid or expired access token" },
+        { status: 401 }
+      );
+    }
+
+    const { searchParams } = new URL(request.url);
+    const jobIdParam = searchParams.get("jobId");
+
+    let whereClause: Record<string, unknown> = {};
+
+    if (payload.role === "candidate") {
+      whereClause = {
+        candidateId: payload.userId,
+        ...(jobIdParam ? { jobId: jobIdParam } : {}),
+      };
+    } else if (payload.role === "employer") {
+      whereClause = {
+        job: {
+          employerId: payload.userId,
+        },
+        ...(jobIdParam ? { jobId: jobIdParam } : {}),
+      };
+    } else {
+      return NextResponse.json(
+        { error: "Invalid user role" },
+        { status: 403 }
+      );
     }
 
     const applications = await prisma.application.findMany({
-      where: {
-        ...(candidateId ? { candidateId } : {}),
-        ...(jobIdParam ? { jobId: jobIdParam } : {}),
-        ...(employerId ? { job: { employerId } } : {}),
-      },
+      where: whereClause,
       include: {
         job: {
           include: {
@@ -74,38 +90,48 @@ export async function POST(request: Request) {
     const cookieStore = await cookies();
     const token = cookieStore.get("accessToken")?.value;
 
-    const body = await request.json();
-    const { jobId, candidateId: bodyCandidateId } = body;
-
-    if (!jobId || typeof jobId !== "string") {
+    if (!token) {
       return NextResponse.json(
-        { error: "Job ID is required" },
+        { error: "Authentication required. Please log in as a candidate." },
+        { status: 401 }
+      );
+    }
+
+    let payload;
+    try {
+      payload = verifyAccessToken(token);
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid or expired access token" },
+        { status: 401 }
+      );
+    }
+
+    if (payload.role !== "candidate") {
+      return NextResponse.json(
+        { error: "Only candidates are authorized to apply to jobs" },
+        { status: 403 }
+      );
+    }
+
+    const candidateId = payload.userId;
+
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid JSON request body" },
         { status: 400 }
       );
     }
 
-    let candidateId = bodyCandidateId;
+    const { jobId } = body;
 
-    if (token) {
-      try {
-        const payload = verifyAccessToken(token);
-        if (payload.role === "candidate") {
-          candidateId = payload.userId;
-        } else if (!candidateId) {
-          return NextResponse.json(
-            { error: "Only candidates can apply to jobs" },
-            { status: 403 }
-          );
-        }
-      } catch {
-        // Fallback to body candidateId
-      }
-    }
-
-    if (!candidateId) {
+    if (!jobId || typeof jobId !== "string" || jobId.trim().length === 0) {
       return NextResponse.json(
-        { error: "Candidate ID or active candidate session is required" },
-        { status: 401 }
+        { error: "jobId is required and must be a non-empty string" },
+        { status: 400 }
       );
     }
 
@@ -115,13 +141,13 @@ export async function POST(request: Request) {
 
     if (!candidate) {
       return NextResponse.json(
-        { error: "Candidate not found" },
+        { error: "Candidate account not found" },
         { status: 404 }
       );
     }
 
     const job = await prisma.job.findUnique({
-      where: { id: jobId },
+      where: { id: jobId.trim() },
     });
 
     if (!job) {
@@ -134,13 +160,13 @@ export async function POST(request: Request) {
     const existingApplication = await prisma.application.findFirst({
       where: {
         candidateId,
-        jobId,
+        jobId: job.id,
       },
     });
 
     if (existingApplication) {
       return NextResponse.json(
-        { error: "Application already submitted for this job" },
+        { error: "You have already applied to this job" },
         { status: 409 }
       );
     }
@@ -148,7 +174,7 @@ export async function POST(request: Request) {
     const application = await prisma.application.create({
       data: {
         candidateId,
-        jobId,
+        jobId: job.id,
         status: "pending",
       },
       include: {
@@ -156,6 +182,12 @@ export async function POST(request: Request) {
           select: {
             id: true,
             title: true,
+            employer: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
           },
         },
       },
@@ -168,7 +200,13 @@ export async function POST(request: Request) {
       },
       { status: 201 }
     );
-  } catch {
+  } catch (error: any) {
+    if (error?.code === "P2002") {
+      return NextResponse.json(
+        { error: "You have already applied to this job" },
+        { status: 409 }
+      );
+    }
     return NextResponse.json(
       { error: "Failed to submit application" },
       { status: 500 }
