@@ -8,7 +8,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (!email || !password) {
@@ -18,10 +18,41 @@ export default function Login() {
 
     setError("");
 
-    console.log({
-      email,
-      password,
-    });
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Invalid email or password.");
+        return;
+      }
+
+      const role = data.user?.role;
+
+      if (role === "candidate") {
+        window.location.href = "/candidate";
+        return;
+      }
+
+      if (role === "employer") {
+        window.location.href = "/employer";
+        return;
+      }
+
+      setError("Invalid account role.");
+    } catch {
+      setError("Unable to connect to the server. Please try again.");
+    }
   }
 
   return (
