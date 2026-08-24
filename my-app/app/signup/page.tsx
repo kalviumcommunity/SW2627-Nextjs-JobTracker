@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function Signup() {
   const [name, setName] = useState("");
@@ -9,23 +11,51 @@ export default function Signup() {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("candidate");
   const [error, setError] = useState("");
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!name || !email || !password) {
+    if (!name.trim() || !email.trim() || !password) {
       setError("Please fill in all required fields.");
       return;
     }
 
-    setError("");
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
 
-    console.log({
-      name,
-      email,
-      password,
-      role,
-    });
+    setError("");
+    setLoading(true);
+
+    try {
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          password,
+          role,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Signup failed. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      router.push(role === "employer" ? "/employer" : "/candidate");
+      router.refresh();
+    } catch {
+      setError("An unexpected error occurred. Please check your connection.");
+      setLoading(false);
+    }
   }
 
   return (
@@ -60,7 +90,8 @@ export default function Signup() {
               onChange={(event) => setName(event.target.value)}
               placeholder="Enter your name"
               required
-              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-800"
+              disabled={loading}
+              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-800"
             />
           </div>
 
@@ -79,7 +110,8 @@ export default function Signup() {
               onChange={(event) => setEmail(event.target.value)}
               placeholder="you@example.com"
               required
-              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-800"
+              disabled={loading}
+              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-800"
             />
           </div>
 
@@ -99,7 +131,8 @@ export default function Signup() {
               placeholder="Enter your password (min 8 characters)"
               required
               minLength={8}
-              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-800"
+              disabled={loading}
+              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-800"
             />
           </div>
 
@@ -115,7 +148,8 @@ export default function Signup() {
               id="role"
               value={role}
               onChange={(event) => setRole(event.target.value)}
-              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-800"
+              disabled={loading}
+              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-800"
             >
               <option value="candidate">Candidate</option>
               <option value="employer">Employer</option>
@@ -123,18 +157,29 @@ export default function Signup() {
           </div>
 
           {error && (
-            <p className="text-sm text-red-600 dark:text-red-400">
+            <p className="rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-950/50 dark:text-red-400">
               {error}
             </p>
           )}
 
           <button
             type="submit"
-            className="w-full rounded-lg bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 dark:bg-white dark:text-slate-900 dark:hover:bg-zinc-200"
+            disabled={loading}
+            className="w-full rounded-lg bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-zinc-200"
           >
-            Create Account
+            {loading ? "Creating account..." : "Create Account"}
           </button>
         </form>
+
+        <p className="mt-4 text-center text-sm text-slate-600 dark:text-zinc-400">
+          Already have an account?{" "}
+          <Link
+            href="/login"
+            className="font-medium text-slate-900 underline hover:text-slate-700 dark:text-zinc-100 dark:hover:text-zinc-300"
+          >
+            Log in
+          </Link>
+        </p>
       </div>
     </main>
   );

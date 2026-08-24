@@ -2,26 +2,54 @@
 
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function Login() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!email || !password) {
+    if (!email.trim() || !password) {
       setError("Please enter your email and password.");
       return;
     }
 
     setError("");
+    setLoading(true);
 
-    console.log({
-      email,
-      password,
-    });
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Login failed. Please check your credentials.");
+        setLoading(false);
+        return;
+      }
+
+      const role = data.user?.role;
+      router.push(role === "employer" ? "/employer" : "/candidate");
+      router.refresh();
+    } catch {
+      setError("An unexpected error occurred. Please check your connection.");
+      setLoading(false);
+    }
   }
 
   return (
@@ -56,7 +84,8 @@ export default function Login() {
               onChange={(event) => setEmail(event.target.value)}
               placeholder="you@example.com"
               required
-              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-800"
+              disabled={loading}
+              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-800"
             />
           </div>
 
@@ -75,23 +104,35 @@ export default function Login() {
               onChange={(event) => setPassword(event.target.value)}
               placeholder="Enter your password"
               required
-              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-800"
+              disabled={loading}
+              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-800"
             />
           </div>
 
           {error && (
-            <p className="text-sm text-red-600 dark:text-red-400">
+            <p className="rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-950/50 dark:text-red-400">
               {error}
             </p>
           )}
 
           <button
             type="submit"
-            className="w-full rounded-lg bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 dark:bg-white dark:text-slate-900 dark:hover:bg-zinc-200"
+            disabled={loading}
+            className="w-full rounded-lg bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-zinc-200"
           >
-            Login
+            {loading ? "Signing in..." : "Sign In"}
           </button>
         </form>
+
+        <p className="mt-4 text-center text-sm text-slate-600 dark:text-zinc-400">
+          Don&apos;t have an account?{" "}
+          <Link
+            href="/signup"
+            className="font-medium text-slate-900 underline hover:text-slate-700 dark:text-zinc-100 dark:hover:text-zinc-300"
+          >
+            Sign up
+          </Link>
+        </p>
       </div>
     </main>
   );
