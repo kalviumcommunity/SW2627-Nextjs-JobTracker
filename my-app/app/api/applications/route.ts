@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
 import { verifyAccessToken } from "@/lib/auth/tokens";
 
+const VALID_STATUSES = ["pending", "viewed", "rejected"] as const;
+
 export async function GET(request: Request) {
   try {
     const cookieStore = await cookies();
@@ -26,7 +28,15 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const jobIdParam = searchParams.get("jobId");
+    const jobIdParam = searchParams.get("jobId")?.trim();
+    const statusParam = searchParams.get("status")?.trim();
+
+    if (statusParam && !VALID_STATUSES.includes(statusParam as (typeof VALID_STATUSES)[number])) {
+      return NextResponse.json(
+        { error: `Invalid status filter. Allowed values: ${VALID_STATUSES.join(", ")}` },
+        { status: 400 }
+      );
+    }
 
     let whereClause: Record<string, unknown> = {};
 
@@ -34,6 +44,7 @@ export async function GET(request: Request) {
       whereClause = {
         candidateId: payload.userId,
         ...(jobIdParam ? { jobId: jobIdParam } : {}),
+        ...(statusParam ? { status: statusParam } : {}),
       };
     } else if (payload.role === "employer") {
       whereClause = {
@@ -41,6 +52,7 @@ export async function GET(request: Request) {
           employerId: payload.userId,
         },
         ...(jobIdParam ? { jobId: jobIdParam } : {}),
+        ...(statusParam ? { status: statusParam } : {}),
       };
     } else {
       return NextResponse.json(
@@ -126,6 +138,13 @@ export async function POST(request: Request) {
       );
     }
 
+    if (!body || typeof body !== "object") {
+      return NextResponse.json(
+        { error: "Request body must be a valid JSON object" },
+        { status: 400 }
+      );
+    }
+
     const { jobId } = body;
 
     if (!jobId || typeof jobId !== "string" || jobId.trim().length === 0) {
@@ -134,6 +153,8 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
+    const sanitizedJobId = jobId.trim();
 
     const candidate = await prisma.candidate.findUnique({
       where: { id: candidateId },
@@ -147,7 +168,7 @@ export async function POST(request: Request) {
     }
 
     const job = await prisma.job.findUnique({
-      where: { id: jobId.trim() },
+      where: { id: sanitizedJobId },
     });
 
     if (!job) {
