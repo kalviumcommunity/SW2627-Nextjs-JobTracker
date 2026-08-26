@@ -41,7 +41,7 @@ export async function POST(request: Request) {
   try {
     const auth = await requireRole("employer");
 
-    if (!auth.authenticated) {
+    if (!auth.authorized) {
       return NextResponse.json(
         { error: auth.error },
         { status: auth.status }

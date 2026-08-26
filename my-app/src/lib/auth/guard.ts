@@ -1,24 +1,44 @@
 import { cookies } from "next/headers";
 import { verifyAccessToken, type AccessTokenPayload } from "./tokens";
 
-export type AuthResult =
+export type AuthSuccess = {
+  authenticated: true;
+  authorized: true;
+  payload: AccessTokenPayload;
+};
+
+export type AuthUnauthenticated = {
+  authenticated: false;
+  authorized: false;
+  status: 401;
+  error: string;
+};
+
+export type AuthForbidden = {
+  authenticated: true;
+  authorized: false;
+  status: 403;
+  error: string;
+  payload: AccessTokenPayload;
+};
+
+export type RoleAuthResult = AuthSuccess | AuthUnauthenticated | AuthForbidden;
+
+export type BaseAuthResult =
   | {
       authenticated: true;
       payload: AccessTokenPayload;
     }
-  | {
-      authenticated: false;
-      status: number;
-      error: string;
-    };
+  | AuthUnauthenticated;
 
-export async function requireAuth(): Promise<AuthResult> {
+export async function requireAuth(): Promise<BaseAuthResult> {
   const cookieStore = await cookies();
   const token = cookieStore.get("accessToken")?.value;
 
   if (!token) {
     return {
       authenticated: false,
+      authorized: false,
       status: 401,
       error: "Authentication required",
     };
@@ -33,6 +53,7 @@ export async function requireAuth(): Promise<AuthResult> {
   } catch {
     return {
       authenticated: false,
+      authorized: false,
       status: 401,
       error: "Invalid or expired access token",
     };
@@ -41,7 +62,7 @@ export async function requireAuth(): Promise<AuthResult> {
 
 export async function requireRole(
   role: "candidate" | "employer"
-): Promise<AuthResult> {
+): Promise<RoleAuthResult> {
   const auth = await requireAuth();
 
   if (!auth.authenticated) {
@@ -50,11 +71,17 @@ export async function requireRole(
 
   if (auth.payload.role !== role) {
     return {
-      authenticated: false,
+      authenticated: true,
+      authorized: false,
       status: 403,
       error: `Only ${role}s are authorized`,
+      payload: auth.payload,
     };
   }
 
-  return auth;
+  return {
+    authenticated: true,
+    authorized: true,
+    payload: auth.payload,
+  };
 }
