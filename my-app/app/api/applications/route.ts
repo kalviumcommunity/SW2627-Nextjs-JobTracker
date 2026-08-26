@@ -1,31 +1,21 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
-import { verifyAccessToken } from "@/lib/auth/tokens";
+import { requireAuth, requireRole } from "@/lib/auth/guard";
 
 const VALID_STATUSES = ["pending", "viewed", "rejected"] as const;
 
 export async function GET(request: Request) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("accessToken")?.value;
+    const auth = await requireAuth();
 
-    if (!token) {
+    if (!auth.authenticated) {
       return NextResponse.json(
-        { error: "Authentication required to view applications" },
-        { status: 401 }
+        { error: auth.error },
+        { status: auth.status }
       );
     }
 
-    let payload;
-    try {
-      payload = verifyAccessToken(token);
-    } catch {
-      return NextResponse.json(
-        { error: "Invalid or expired access token" },
-        { status: 401 }
-      );
-    }
+    const payload = auth.payload;
 
     const { searchParams } = new URL(request.url);
     const jobIdParam = searchParams.get("jobId")?.trim();
@@ -99,34 +89,16 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("accessToken")?.value;
+    const auth = await requireRole("candidate");
 
-    if (!token) {
+    if (!auth.authenticated) {
       return NextResponse.json(
-        { error: "Authentication required. Please log in as a candidate." },
-        { status: 401 }
+        { error: auth.error },
+        { status: auth.status }
       );
     }
 
-    let payload;
-    try {
-      payload = verifyAccessToken(token);
-    } catch {
-      return NextResponse.json(
-        { error: "Invalid or expired access token" },
-        { status: 401 }
-      );
-    }
-
-    if (payload.role !== "candidate") {
-      return NextResponse.json(
-        { error: "Only candidates are authorized to apply to jobs" },
-        { status: 403 }
-      );
-    }
-
-    const candidateId = payload.userId;
+    const candidateId = auth.payload.userId;
 
     let body;
     try {

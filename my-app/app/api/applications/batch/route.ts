@@ -1,40 +1,21 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
-import { verifyAccessToken } from "@/lib/auth/tokens";
+import { requireRole } from "@/lib/auth/guard";
 
-const VALID_STATUSES = ["pending", "viewed", "rejected"] as const;
+const VALID_TARGET_STATUSES = ["viewed", "rejected"] as const;
 
 export async function PATCH(request: Request) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("accessToken")?.value;
+    const auth = await requireRole("employer");
 
-    if (!token) {
+    if (!auth.authenticated) {
       return NextResponse.json(
-        { error: "Authentication required. Please log in as an employer." },
-        { status: 401 }
+        { error: auth.error },
+        { status: auth.status }
       );
     }
 
-    let payload;
-    try {
-      payload = verifyAccessToken(token);
-    } catch {
-      return NextResponse.json(
-        { error: "Invalid or expired access token" },
-        { status: 401 }
-      );
-    }
-
-    if (payload.role !== "employer") {
-      return NextResponse.json(
-        { error: "Only employers are authorized to batch-update applications" },
-        { status: 403 }
-      );
-    }
-
-    const employerId = payload.userId;
+    const employerId = auth.payload.userId;
 
     let body;
     try {
@@ -68,16 +49,19 @@ export async function PATCH(request: Request) {
       );
     }
 
-    if (!targetStatus || !VALID_STATUSES.includes(targetStatus as (typeof VALID_STATUSES)[number])) {
+    if (
+      !targetStatus ||
+      !VALID_TARGET_STATUSES.includes(targetStatus as (typeof VALID_TARGET_STATUSES)[number])
+    ) {
       return NextResponse.json(
-        { error: `Status must be one of: ${VALID_STATUSES.join(", ")}` },
+        { error: `Status must be one of: ${VALID_TARGET_STATUSES.join(", ")}` },
         { status: 400 }
       );
     }
 
     const sanitizedIds = [...new Set(applicationIds.map((id: string) => id.trim()))];
 
-    const eligibleApplications = await prisma.application.findMany({
+    const ownedApplications = await prisma.application.findMany({
       where: {
         id: { in: sanitizedIds },
         job: {
@@ -86,22 +70,49 @@ export async function PATCH(request: Request) {
       },
       select: {
         id: true,
+        status: true,
       },
     });
 
-    const eligibleIds = eligibleApplications.map((app) => app.id);
-
-    if (eligibleIds.length === 0) {
+    if (ownedApplications.length === 0) {
       return NextResponse.json(
         { error: "No matching applications found belonging to your job postings" },
         { status: 404 }
       );
     }
 
+    if (ownedApplications.length !== sanitizedIds.length) {
+      return NextResponse.json(
+        { error: "One or more application IDs were not found or do not belong to your job postings" },
+        { status: 404 }
+      );
+    }
+
+    // State machine:
+    // target "viewed" -> allowed only from "pending"
+    // target "rejected" -> allowed from "pending" or "viewed"
+    // "rejected" is a terminal state; applications cannot be transitioned back to "pending" or "viewed"
+    const allowedSourceStatuses =
+      targetStatus === "viewed" ? ["pending"] : ["pending", "viewed"];
+
+    const ineligibleApplications = ownedApplications.filter(
+      (app) => !allowedSourceStatuses.includes(app.status)
+    );
+
+    // Atomic enforcement: if ANY application cannot make the transition, reject the entire batch
+    if (ineligibleApplications.length > 0) {
+      return NextResponse.json(
+        {
+          error: `Invalid status transition: all selected applications must be eligible to transition to '${targetStatus}'. Found ${ineligibleApplications.length} application(s) with incompatible status.`,
+        },
+        { status: 400 }
+      );
+    }
+
     const result = await prisma.application.updateMany({
       where: {
         id: {
-          in: eligibleIds,
+          in: sanitizedIds,
         },
       },
       data: {
