@@ -193,8 +193,8 @@ export async function POST(request: Request) {
       },
       { status: 201 }
     );
-  } catch (error: any) {
-    if (error?.code === "P2002") {
+  } catch (error: unknown) {
+    if (typeof error === "object" && error !== null && "code" in error && (error as { code: unknown }).code === "P2002") {
       return NextResponse.json(
         { error: "You have already applied to this job" },
         { status: 409 }
