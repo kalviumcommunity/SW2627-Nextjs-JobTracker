@@ -1,40 +1,21 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
-import { verifyAccessToken } from "@/lib/auth/tokens";
+import { requireRole } from "@/lib/auth/guard";
 
 const VALID_TARGET_STATUSES = ["viewed", "rejected"] as const;
 
 export async function PATCH(request: Request) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("accessToken")?.value;
+    const auth = await requireRole("employer");
 
-    if (!token) {
+    if (!auth.authorized) {
       return NextResponse.json(
-        { error: "Authentication required. Please log in as an employer." },
-        { status: 401 }
+        { error: auth.error },
+        { status: auth.status }
       );
     }
 
-    let payload;
-    try {
-      payload = verifyAccessToken(token);
-    } catch {
-      return NextResponse.json(
-        { error: "Invalid or expired access token" },
-        { status: 401 }
-      );
-    }
-
-    if (payload.role !== "employer") {
-      return NextResponse.json(
-        { error: "Only employers are authorized to batch-update applications" },
-        { status: 403 }
-      );
-    }
-
-    const employerId = payload.userId;
+    const employerId = auth.payload.userId;
 
     let body;
     try {
