@@ -46,8 +46,15 @@ export async function PATCH(request: Request) {
       );
     }
 
+    if (!body || typeof body !== "object") {
+      return NextResponse.json(
+        { error: "Request body must be a valid JSON object" },
+        { status: 400 }
+      );
+    }
+
     const { applicationIds, newStatus, status } = body;
-    const targetStatus = newStatus || status;
+    const targetStatus = (newStatus || status)?.toString()?.trim();
 
     if (
       !applicationIds ||
@@ -61,16 +68,18 @@ export async function PATCH(request: Request) {
       );
     }
 
-    if (!targetStatus || !VALID_STATUSES.includes(targetStatus)) {
+    if (!targetStatus || !VALID_STATUSES.includes(targetStatus as (typeof VALID_STATUSES)[number])) {
       return NextResponse.json(
         { error: `Status must be one of: ${VALID_STATUSES.join(", ")}` },
         { status: 400 }
       );
     }
 
+    const sanitizedIds = [...new Set(applicationIds.map((id: string) => id.trim()))];
+
     const eligibleApplications = await prisma.application.findMany({
       where: {
-        id: { in: applicationIds },
+        id: { in: sanitizedIds },
         job: {
           employerId: employerId,
         },
