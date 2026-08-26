@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
 import { verifyAccessToken } from "@/lib/auth/tokens";
 
-const VALID_STATUSES = ["pending", "viewed", "rejected"] as const;
+const VALID_TARGET_STATUSES = ["viewed", "rejected"] as const;
 
 export async function PATCH(request: Request) {
   try {
@@ -68,16 +68,19 @@ export async function PATCH(request: Request) {
       );
     }
 
-    if (!targetStatus || !VALID_STATUSES.includes(targetStatus as (typeof VALID_STATUSES)[number])) {
+    if (
+      !targetStatus ||
+      !VALID_TARGET_STATUSES.includes(targetStatus as (typeof VALID_TARGET_STATUSES)[number])
+    ) {
       return NextResponse.json(
-        { error: `Status must be one of: ${VALID_STATUSES.join(", ")}` },
+        { error: `Status must be one of: ${VALID_TARGET_STATUSES.join(", ")}` },
         { status: 400 }
       );
     }
 
     const sanitizedIds = [...new Set(applicationIds.map((id: string) => id.trim()))];
 
-    const eligibleApplications = await prisma.application.findMany({
+    const ownedApplications = await prisma.application.findMany({
       where: {
         id: { in: sanitizedIds },
         job: {
@@ -86,17 +89,38 @@ export async function PATCH(request: Request) {
       },
       select: {
         id: true,
+        status: true,
       },
     });
 
-    const eligibleIds = eligibleApplications.map((app) => app.id);
-
-    if (eligibleIds.length === 0) {
+    if (ownedApplications.length === 0) {
       return NextResponse.json(
         { error: "No matching applications found belonging to your job postings" },
         { status: 404 }
       );
     }
+
+    // State machine:
+    // target "viewed" -> allowed only from "pending"
+    // target "rejected" -> allowed from "pending" or "viewed"
+    // "rejected" is a terminal state; applications cannot be transitioned back to "pending" or "viewed"
+    const allowedSourceStatuses =
+      targetStatus === "viewed" ? ["pending"] : ["pending", "viewed"];
+
+    const eligibleApplications = ownedApplications.filter((app) =>
+      allowedSourceStatuses.includes(app.status)
+    );
+
+    if (eligibleApplications.length === 0) {
+      return NextResponse.json(
+        {
+          error: `Invalid status transition: selected applications cannot be transitioned to '${targetStatus}'`,
+        },
+        { status: 400 }
+      );
+    }
+
+    const eligibleIds = eligibleApplications.map((app) => app.id);
 
     const result = await prisma.application.updateMany({
       where: {

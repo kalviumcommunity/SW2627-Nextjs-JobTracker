@@ -1,7 +1,7 @@
 # Backend API & Edge-Case Testing Log
 **Project:** Apna.co Job Application Tracker  
 **Module:** Backend API Testing & Security Verification  
-**Date:** August 25, 2026  
+**Date:** August 26, 2026  
 **Environment:** Local Development (`http://localhost:3000`)  
 **Database:** PostgreSQL (Supabase) with Prisma ORM  
 
@@ -9,7 +9,7 @@
 
 ## 1. Executive Summary
 
-This document records the automated and manual verification results for the core application workflow, authorization boundaries, input validations, and edge cases implemented in the backend API routes.
+This document records the automated and manual verification results for the core application workflow, authorization boundaries, input validations, and state machine transition rules implemented in the backend API routes.
 
 All test suites were executed against live endpoints with fresh candidate and employer test sessions.
 
@@ -30,14 +30,16 @@ All test suites were executed against live endpoints with fresh candidate and em
 
 ---
 
-### B. Batch Application Updates (`/api/applications/batch`)
+### B. Batch Application Updates & State Machine (`/api/applications/batch`)
 
 | Test Case | Method & Endpoint | Auth State / Payload | Expected Status | Observed Status | Result |
 |---|---|---|---|---|---|
-| **Valid Batch Update (Viewed)** | `PATCH /api/applications/batch` | Employer Token, `{ applicationIds: ["ID_1"], newStatus: "viewed" }` | `200 OK` (`count: 1, updatedStatus: "viewed"`) | `200 OK` | **PASS** |
-| **Valid Batch Update (Rejected)** | `PATCH /api/applications/batch` | Employer Token, `{ applicationIds: ["ID_1"], newStatus: "rejected" }` | `200 OK` (`count: 1, updatedStatus: "rejected"`) | `200 OK` | **PASS** |
+| **Valid Batch Update (Pending → Viewed)** | `PATCH /api/applications/batch` | Employer Token, `{ applicationIds: ["ID_1"], newStatus: "viewed" }` | `200 OK` (`count: 1, updatedStatus: "viewed"`) | `200 OK` | **PASS** |
+| **Valid Batch Update (Viewed → Rejected)** | `PATCH /api/applications/batch` | Employer Token, `{ applicationIds: ["ID_1"], newStatus: "rejected" }` | `200 OK` (`count: 1, updatedStatus: "rejected"`) | `200 OK` | **PASS** |
+| **Reverting Status to Pending** | `PATCH /api/applications/batch` | Employer Token, `{ applicationIds: ["ID_1"], newStatus: "pending" }` | `400 Bad Request` (`{ error: "Status must be one of: viewed, rejected" }`) | `400 Bad Request` | **PASS** |
+| **Transition from Terminal Rejected State** | `PATCH /api/applications/batch` | Employer Token, `{ applicationIds: ["REJECTED_ID"], newStatus: "viewed" }` | `400 Bad Request` (`{ error: "Invalid status transition: selected applications cannot be transitioned to 'viewed'" }`) | `400 Bad Request` | **PASS** |
 | **Empty Application IDs Array** | `PATCH /api/applications/batch` | Employer Token, `{ applicationIds: [], newStatus: "viewed" }` | `400 Bad Request` (`{ error: "applicationIds must be a non-empty array..." }`) | `400 Bad Request` | **PASS** |
-| **Invalid Application Status** | `PATCH /api/applications/batch` | Employer Token, `{ applicationIds: ["ID_1"], newStatus: "hired" }` | `400 Bad Request` (`{ error: "Status must be one of: pending, viewed, rejected" }`) | `400 Bad Request` | **PASS** |
+| **Invalid Application Status** | `PATCH /api/applications/batch` | Employer Token, `{ applicationIds: ["ID_1"], newStatus: "hired" }` | `400 Bad Request` (`{ error: "Status must be one of: viewed, rejected" }`) | `400 Bad Request` | **PASS** |
 | **Candidate Attempting Batch Update** | `PATCH /api/applications/batch` | Candidate Token | `403 Forbidden` (`{ error: "Only employers are authorized..." }`) | `403 Forbidden` | **PASS** |
 | **Foreign Employer Isolation** | `PATCH /api/applications/batch` | Different Employer Token | `404 Not Found` (`{ error: "No matching applications found belonging to your job postings" }`) | `404 Not Found` | **PASS** |
 
