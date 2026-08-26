@@ -100,6 +100,13 @@ export async function PATCH(request: Request) {
       );
     }
 
+    if (ownedApplications.length !== sanitizedIds.length) {
+      return NextResponse.json(
+        { error: "One or more application IDs were not found or do not belong to your job postings" },
+        { status: 404 }
+      );
+    }
+
     // State machine:
     // target "viewed" -> allowed only from "pending"
     // target "rejected" -> allowed from "pending" or "viewed"
@@ -107,25 +114,24 @@ export async function PATCH(request: Request) {
     const allowedSourceStatuses =
       targetStatus === "viewed" ? ["pending"] : ["pending", "viewed"];
 
-    const eligibleApplications = ownedApplications.filter((app) =>
-      allowedSourceStatuses.includes(app.status)
+    const ineligibleApplications = ownedApplications.filter(
+      (app) => !allowedSourceStatuses.includes(app.status)
     );
 
-    if (eligibleApplications.length === 0) {
+    // Atomic enforcement: if ANY application cannot make the transition, reject the entire batch
+    if (ineligibleApplications.length > 0) {
       return NextResponse.json(
         {
-          error: `Invalid status transition: selected applications cannot be transitioned to '${targetStatus}'`,
+          error: `Invalid status transition: all selected applications must be eligible to transition to '${targetStatus}'. Found ${ineligibleApplications.length} application(s) with incompatible status.`,
         },
         { status: 400 }
       );
     }
 
-    const eligibleIds = eligibleApplications.map((app) => app.id);
-
     const result = await prisma.application.updateMany({
       where: {
         id: {
-          in: eligibleIds,
+          in: sanitizedIds,
         },
       },
       data: {
