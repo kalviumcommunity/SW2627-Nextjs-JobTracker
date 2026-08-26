@@ -2,18 +2,27 @@
 
 import { useState } from "react";
 import type { FormEvent } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/ui/Alert";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 
 export default function Signup() {
+  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("candidate");
+  const [role, setRole] = useState<"candidate" | "employer">("candidate");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!name || !email || !password) {
+    if (!name.trim() || !email.trim() || !password) {
       setError("Please fill in all required fields.");
       return;
     }
@@ -24,6 +33,8 @@ export default function Signup() {
     }
 
     setError("");
+    setSuccess("");
+    setIsLoading(true);
 
     try {
       const response = await fetch("/api/auth/signup", {
@@ -32,8 +43,8 @@ export default function Signup() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          name,
-          email,
+          name: name.trim(),
+          email: email.trim(),
           password,
           role,
         }),
@@ -43,125 +54,128 @@ export default function Signup() {
 
       if (!response.ok) {
         setError(data.error || "Signup failed. Please try again.");
+        setIsLoading(false);
         return;
       }
 
-      alert("Account created successfully!");
-
-      window.location.href = "/login";
+      setSuccess("Account created successfully! Redirecting to login...");
+      setTimeout(() => {
+        router.push("/login");
+      }, 1200);
     } catch {
       setError("Unable to connect to the server. Please try again.");
+      setIsLoading(false);
     }
   }
 
-    return (
-      <main className="flex flex-1 items-center justify-center p-6 sm:p-12">
-        <div className="w-full max-w-md">
-          <div className="mb-8 text-center">
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-zinc-100">
-              Create your account
-            </h1>
+  return (
+    <main className="flex-1 flex items-center justify-center p-4 sm:p-6 antialiased bg-[#FAFAFA]">
+      <div className="w-full max-w-[420px]">
+        {/* Branding Header */}
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#3525cd] text-white font-bold text-xl mb-3 shadow-sm">
+            AT
+          </div>
+          <h1 className="text-3xl font-bold tracking-tight text-[#3525cd]">
+            Apna Tracker
+          </h1>
+          <p className="text-sm text-[#464555] mt-1.5 font-medium">
+            Create your account
+          </p>
+        </div>
 
-            <p className="mt-2 text-sm text-slate-600 dark:text-zinc-400">
-              Sign up to start using Job Tracker
-            </p>
+        {/* Auth Card */}
+        <div className="bg-white border border-[#c7c4d8] rounded-xl p-6 sm:p-8 shadow-[0_4px_12px_rgba(0,0,0,0.03)]">
+          {/* Segmented Role Control */}
+          <div className="mb-5">
+            <label className="block text-xs font-medium text-[#121c28] mb-1.5">
+              I want to join as
+            </label>
+            <SegmentedControl
+              ariaLabel="Select account type"
+              value={role}
+              onChange={(val) => setRole(val as "candidate" | "employer")}
+              options={[
+                { value: "candidate", label: "Candidate", icon: "person" },
+                { value: "employer", label: "Employer", icon: "domain" },
+              ]}
+            />
           </div>
 
-          <form
-            onSubmit={handleSubmit}
-            className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-8"
-          >
-            <div>
-              <label
-                htmlFor="name"
-                className="mb-2 block text-sm font-medium text-slate-700 dark:text-zinc-300"
-              >
-                Full Name
-              </label>
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Full Name */}
+            <Input
+              id="name"
+              type="text"
+              label="Full Name"
+              icon="badge"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={role === "candidate" ? "Jane Doe" : "Alex Smith (Acme Corp)"}
+              required
+              autoComplete="name"
+            />
 
-              <input
-                id="name"
-                type="text"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="Enter your name"
-                required
-                className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-800"
-              />
+            {/* Email Input */}
+            <Input
+              id="email"
+              type="email"
+              label="Email address"
+              icon="mail"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder={role === "candidate" ? "jane@example.com" : "alex@company.com"}
+              required
+              autoComplete="email"
+            />
+
+            {/* Password Input */}
+            <Input
+              id="password"
+              type="password"
+              label="Password"
+              icon="lock"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Minimum 8 characters"
+              required
+              minLength={8}
+              helperText="Must be at least 8 characters long."
+              autoComplete="new-password"
+            />
+
+            {/* Success or Error Alerts */}
+            {success && <Alert type="success" message={success} />}
+            {error && <Alert type="error" message={error} onClose={() => setError("")} />}
+
+            {/* Submit Button */}
+            <div className="pt-2">
+              <Button
+                type="submit"
+                variant="primary"
+                className="w-full"
+                isLoading={isLoading}
+              >
+                Create Account
+              </Button>
             </div>
-
-            <div>
-              <label
-                htmlFor="email"
-                className="mb-2 block text-sm font-medium text-slate-700 dark:text-zinc-300"
-              >
-                Email
-              </label>
-
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="you@example.com"
-                required
-                className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-800"
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="password"
-                className="mb-2 block text-sm font-medium text-slate-700 dark:text-zinc-300"
-              >
-                Password
-              </label>
-
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Enter your password (min 8 characters)"
-                required
-                minLength={8}
-                className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-800"
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="role"
-                className="mb-2 block text-sm font-medium text-slate-700 dark:text-zinc-300"
-              >
-                Account Type
-              </label>
-
-              <select
-                id="role"
-                value={role}
-                onChange={(event) => setRole(event.target.value)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-800"
-              >
-                <option value="candidate">Candidate</option>
-                <option value="employer">Employer</option>
-              </select>
-            </div>
-
-            {error && (
-              <p className="text-sm text-red-600 dark:text-red-400">
-                {error}
-              </p>
-            )}
-
-            <button
-              type="submit"
-              className="w-full rounded-lg bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 dark:bg-white dark:text-slate-900 dark:hover:bg-zinc-200"
-            >
-              Create Account
-            </button>
           </form>
+
+          {/* Footer Link */}
+          <div className="mt-6 pt-5 border-t border-[#c7c4d8]/40 text-center">
+            <p className="text-sm text-[#464555]">
+              Already have an account?{" "}
+              <Link
+                href="/login"
+                className="font-semibold text-[#3525cd] hover:text-[#4f46e5] transition-colors"
+              >
+                Sign in
+              </Link>
+            </p>
+          </div>
         </div>
-      </main>
-    );
+      </div>
+    </main>
+  );
 }
