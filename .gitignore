@@ -35,3 +35,9 @@ yarn-error.log*
 
 # Prisma
 /my-app/app/generated/prisma
+
+# Tooling & Agent caches
+.agents/
+.claude/
+.windsurf/
+skills-lock.json

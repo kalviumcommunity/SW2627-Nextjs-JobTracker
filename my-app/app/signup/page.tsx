@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
@@ -11,6 +12,7 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 
 export default function Signup() {
   const router = useRouter();
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -44,7 +46,7 @@ export default function Signup() {
         },
         body: JSON.stringify({
           name: name.trim(),
-          email: email.trim(),
+          email: email.trim().toLowerCase(),
           password,
           role,
         }),
@@ -59,6 +61,7 @@ export default function Signup() {
       }
 
       setSuccess("Account created successfully! Redirecting to login...");
+
       setTimeout(() => {
         router.push("/login");
       }, 1200);
@@ -76,9 +79,11 @@ export default function Signup() {
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#3525cd] text-white font-bold text-xl mb-3 shadow-sm">
             AT
           </div>
+
           <h1 className="text-3xl font-bold tracking-tight text-[#3525cd]">
             Apna Tracker
           </h1>
+
           <p className="text-sm text-[#464555] mt-1.5 font-medium">
             Create your account
           </p>
@@ -86,18 +91,29 @@ export default function Signup() {
 
         {/* Auth Card */}
         <div className="bg-white border border-[#c7c4d8] rounded-xl p-6 sm:p-8 shadow-[0_4px_12px_rgba(0,0,0,0.03)]">
-          {/* Segmented Role Control */}
+          {/* Role Selection */}
           <div className="mb-5">
             <label className="block text-xs font-medium text-[#121c28] mb-1.5">
               I want to join as
             </label>
+
             <SegmentedControl
               ariaLabel="Select account type"
               value={role}
-              onChange={(val) => setRole(val as "candidate" | "employer")}
+              onChange={(val) =>
+                setRole(val as "candidate" | "employer")
+              }
               options={[
-                { value: "candidate", label: "Candidate", icon: "person" },
-                { value: "employer", label: "Employer", icon: "domain" },
+                {
+                  value: "candidate",
+                  label: "Candidate",
+                  icon: "person",
+                },
+                {
+                  value: "employer",
+                  label: "Employer",
+                  icon: "domain",
+                },
               ]}
             />
           </div>
@@ -112,12 +128,16 @@ export default function Signup() {
               icon="badge"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder={role === "candidate" ? "Jane Doe" : "Alex Smith (Acme Corp)"}
+              placeholder={
+                role === "candidate"
+                  ? "Jane Doe"
+                  : "Alex Smith (Acme Corp)"
+              }
               required
               autoComplete="name"
             />
 
-            {/* Email Input */}
+            {/* Email */}
             <Input
               id="email"
               type="email"
@@ -125,12 +145,16 @@ export default function Signup() {
               icon="mail"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder={role === "candidate" ? "jane@example.com" : "alex@company.com"}
+              placeholder={
+                role === "candidate"
+                  ? "jane@example.com"
+                  : "alex@company.com"
+              }
               required
               autoComplete="email"
             />
 
-            {/* Password Input */}
+            {/* Password */}
             <Input
               id="password"
               type="password"
@@ -145,11 +169,23 @@ export default function Signup() {
               autoComplete="new-password"
             />
 
-            {/* Success or Error Alerts */}
-            {success && <Alert type="success" message={success} />}
-            {error && <Alert type="error" message={error} onClose={() => setError("")} />}
+            {/* Alerts */}
+            {success && (
+              <Alert
+                type="success"
+                message={success}
+              />
+            )}
 
-            {/* Submit Button */}
+            {error && (
+              <Alert
+                type="error"
+                message={error}
+                onClose={() => setError("")}
+              />
+            )}
+
+            {/* Submit */}
             <div className="pt-2">
               <Button
                 type="submit"
@@ -162,7 +198,7 @@ export default function Signup() {
             </div>
           </form>
 
-          {/* Footer Link */}
+          {/* Login Link */}
           <div className="mt-6 pt-5 border-t border-[#c7c4d8]/40 text-center">
             <p className="text-sm text-[#464555]">
               Already have an account?{" "}

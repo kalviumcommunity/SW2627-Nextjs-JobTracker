@@ -1,32 +1,32 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
-import { verifyAccessToken } from "@/lib/auth/tokens";
+import { requireAuth, requireRole } from "@/lib/auth/guard";
+
+const VALID_STATUSES = ["pending", "viewed", "rejected"] as const;
 
 export async function GET(request: Request) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("accessToken")?.value;
+    const auth = await requireAuth();
 
-    if (!token) {
+    if (!auth.authenticated) {
       return NextResponse.json(
-        { error: "Authentication required to view applications" },
-        { status: 401 }
+        { error: auth.error },
+        { status: auth.status }
       );
     }
 
-    let payload;
-    try {
-      payload = verifyAccessToken(token);
-    } catch {
-      return NextResponse.json(
-        { error: "Invalid or expired access token" },
-        { status: 401 }
-      );
-    }
+    const payload = auth.payload;
 
     const { searchParams } = new URL(request.url);
-    const jobIdParam = searchParams.get("jobId");
+    const jobIdParam = searchParams.get("jobId")?.trim();
+    const statusParam = searchParams.get("status")?.trim();
+
+    if (statusParam && !VALID_STATUSES.includes(statusParam as (typeof VALID_STATUSES)[number])) {
+      return NextResponse.json(
+        { error: `Invalid status filter. Allowed values: ${VALID_STATUSES.join(", ")}` },
+        { status: 400 }
+      );
+    }
 
     let whereClause: Record<string, unknown> = {};
 
@@ -34,6 +34,7 @@ export async function GET(request: Request) {
       whereClause = {
         candidateId: payload.userId,
         ...(jobIdParam ? { jobId: jobIdParam } : {}),
+        ...(statusParam ? { status: statusParam } : {}),
       };
     } else if (payload.role === "employer") {
       whereClause = {
@@ -41,6 +42,7 @@ export async function GET(request: Request) {
           employerId: payload.userId,
         },
         ...(jobIdParam ? { jobId: jobIdParam } : {}),
+        ...(statusParam ? { status: statusParam } : {}),
       };
     } else {
       return NextResponse.json(
@@ -87,34 +89,16 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("accessToken")?.value;
+    const auth = await requireRole("candidate");
 
-    if (!token) {
+    if (!auth.authorized) {
       return NextResponse.json(
-        { error: "Authentication required. Please log in as a candidate." },
-        { status: 401 }
+        { error: auth.error },
+        { status: auth.status }
       );
     }
 
-    let payload;
-    try {
-      payload = verifyAccessToken(token);
-    } catch {
-      return NextResponse.json(
-        { error: "Invalid or expired access token" },
-        { status: 401 }
-      );
-    }
-
-    if (payload.role !== "candidate") {
-      return NextResponse.json(
-        { error: "Only candidates are authorized to apply to jobs" },
-        { status: 403 }
-      );
-    }
-
-    const candidateId = payload.userId;
+    const candidateId = auth.payload.userId;
 
     let body;
     try {
@@ -122,6 +106,13 @@ export async function POST(request: Request) {
     } catch {
       return NextResponse.json(
         { error: "Invalid JSON request body" },
+        { status: 400 }
+      );
+    }
+
+    if (!body || typeof body !== "object") {
+      return NextResponse.json(
+        { error: "Request body must be a valid JSON object" },
         { status: 400 }
       );
     }
@@ -135,6 +126,8 @@ export async function POST(request: Request) {
       );
     }
 
+    const sanitizedJobId = jobId.trim();
+
     const candidate = await prisma.candidate.findUnique({
       where: { id: candidateId },
     });
@@ -147,7 +140,7 @@ export async function POST(request: Request) {
     }
 
     const job = await prisma.job.findUnique({
-      where: { id: jobId.trim() },
+      where: { id: sanitizedJobId },
     });
 
     if (!job) {
@@ -200,8 +193,8 @@ export async function POST(request: Request) {
       },
       { status: 201 }
     );
-  } catch (error: any) {
-    if (error?.code === "P2002") {
+  } catch (error: unknown) {
+    if (typeof error === "object" && error !== null && "code" in error && (error as { code: unknown }).code === "P2002") {
       return NextResponse.json(
         { error: "You have already applied to this job" },
         { status: 409 }

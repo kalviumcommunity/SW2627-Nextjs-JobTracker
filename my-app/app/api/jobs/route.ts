@@ -1,15 +1,40 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
-import { verifyAccessToken } from "@/lib/auth/tokens";
+import { requireRole } from "@/lib/auth/guard";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const employerId = searchParams.get("employerId");
+    const employerId = searchParams.get("employerId")?.trim();
+    const search = searchParams.get("search")?.trim();
+    const location = searchParams.get("location")?.trim();
 
+    const whereClause: Record<string, unknown> = {};
+
+    if (employerId) {
+      whereClause.employerId = employerId;
+    }
+
+    if (search) {
+      whereClause.title = {
+        contains: search,
+        mode: "insensitive",
+      };
+    }
+
+    if (location) {
+      whereClause.location = {
+        contains: location,
+        mode: "insensitive",
+      };
+    }
+
+    // Single consolidated query filter for employerId, title search, and location
     const jobs = await prisma.job.findMany({
-      where: employerId ? { employerId } : undefined,
+      where:
+        Object.keys(whereClause).length > 0
+          ? whereClause
+          : undefined,
       include: {
         employer: {
           select: {
@@ -40,34 +65,16 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("accessToken")?.value;
+    const auth = await requireRole("employer");
 
-    if (!token) {
+    if (!auth.authorized) {
       return NextResponse.json(
-        { error: "Authentication required. Please log in as an employer." },
-        { status: 401 }
+        { error: auth.error },
+        { status: auth.status }
       );
     }
 
-    let payload;
-    try {
-      payload = verifyAccessToken(token);
-    } catch {
-      return NextResponse.json(
-        { error: "Invalid or expired access token" },
-        { status: 401 }
-      );
-    }
-
-    if (payload.role !== "employer") {
-      return NextResponse.json(
-        { error: "Only employers are authorized to create job postings" },
-        { status: 403 }
-      );
-    }
-
-    const employerId = payload.userId;
+    const employerId = auth.payload.userId;
 
     let body;
     try {
@@ -79,7 +86,14 @@ export async function POST(request: Request) {
       );
     }
 
-    const { title } = body;
+    if (!body || typeof body !== "object") {
+      return NextResponse.json(
+        { error: "Request body must be a valid JSON object" },
+        { status: 400 }
+      );
+    }
+
+    const { title, location } = body;
 
     if (!title || typeof title !== "string" || title.trim().length === 0) {
       return NextResponse.json(
@@ -87,6 +101,11 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
+    const sanitizedLocation =
+      location && typeof location === "string" && location.trim().length > 0
+        ? location.trim()
+        : null;
 
     const employer = await prisma.employer.findUnique({
       where: { id: employerId },
@@ -102,6 +121,7 @@ export async function POST(request: Request) {
     const job = await prisma.job.create({
       data: {
         title: title.trim(),
+        location: sanitizedLocation,
         employerId,
       },
       include: {

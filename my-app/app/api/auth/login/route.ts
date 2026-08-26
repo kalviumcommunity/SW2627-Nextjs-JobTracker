@@ -17,7 +17,7 @@ export async function POST(request: Request) {
       );
     }
 
-    let candidate = await prisma.candidate.findUnique({
+    const candidate = await prisma.candidate.findUnique({
       where: { email },
     });
 

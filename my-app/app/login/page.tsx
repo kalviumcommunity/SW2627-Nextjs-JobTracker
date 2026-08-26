@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
@@ -11,7 +12,11 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 
 export default function Login() {
   const router = useRouter();
-  const [roleSelection, setRoleSelection] = useState<"employer" | "candidate">("employer");
+
+  const [roleSelection, setRoleSelection] = useState<
+    "employer" | "candidate"
+  >("employer");
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -35,7 +40,7 @@ export default function Login() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email: email.trim(),
+          email: email.trim().toLowerCase(),
           password,
         }),
       });
@@ -78,9 +83,11 @@ export default function Login() {
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#3525cd] text-white font-bold text-xl mb-3 shadow-sm">
             AT
           </div>
+
           <h1 className="text-3xl font-bold tracking-tight text-[#3525cd]">
             Apna Tracker
           </h1>
+
           <p className="text-sm text-[#464555] mt-1.5 font-medium">
             Sign in to your account
           </p>
@@ -93,7 +100,9 @@ export default function Login() {
             className="mb-5"
             ariaLabel="Account type"
             value={roleSelection}
-            onChange={(val) => setRoleSelection(val as "employer" | "candidate")}
+            onChange={(val) =>
+              setRoleSelection(val as "employer" | "candidate")
+            }
             options={[
               { value: "employer", label: "Employer", icon: "domain" },
               { value: "candidate", label: "Candidate", icon: "person" },
@@ -138,7 +147,13 @@ export default function Login() {
             />
 
             {/* Error Alert */}
-            {error && <Alert type="error" message={error} onClose={() => setError("")} />}
+            {error && (
+              <Alert
+                type="error"
+                message={error}
+                onClose={() => setError("")}
+              />
+            )}
 
             {/* Submit Button */}
             <div className="pt-2">
