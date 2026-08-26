@@ -29,8 +29,12 @@ export async function GET(request: Request) {
       };
     }
 
+    // Single consolidated query filter for employerId, title search, and location
     const jobs = await prisma.job.findMany({
-      where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
+      where:
+        Object.keys(whereClause).length > 0
+          ? whereClause
+          : undefined,
       include: {
         employer: {
           select: {
