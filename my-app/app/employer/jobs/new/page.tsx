@@ -47,6 +47,7 @@ export default function PostJob() {
         },
         body: JSON.stringify({
           title: title.trim(),
+          location: location.trim(),
         }),
       });
 

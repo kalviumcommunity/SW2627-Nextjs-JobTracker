@@ -6,16 +6,21 @@ import { usePathname } from "next/navigation";
 export default function Navbar() {
   const pathname = usePathname();
 
+  // Hide the marketing navbar on candidate and employer portal routes
+  // (Portal pages use AppShell with its own dedicated sidebar and top bar)
+  const isDashboardRoute =
+    pathname.startsWith("/candidate") || pathname.startsWith("/employer");
+
+  if (isDashboardRoute) {
+    return null;
+  }
+
   const links = [
     { href: "/", label: "Home" },
-    { href: "/login", label: "Login" },
+    { href: "/login", label: "Sign In" },
     { href: "/signup", label: "Sign Up" },
-    { href: "/candidate", label: "Candidate Hub" },
-    { href: "/candidate/jobs", label: "Jobs" },
-    { href: "/candidate/applications", label: "My Applications" },
-    { href: "/employer", label: "Employer Hub" },
-    { href: "/employer/jobs", label: "Manage Jobs" },
-    { href: "/employer/jobs/new", label: "Post Job" },
+    { href: "/role-selection", label: "Portals" },
+    { href: "/candidate/jobs", label: "Explore Jobs" },
   ];
 
   return (
@@ -37,14 +42,14 @@ export default function Navbar() {
         </Link>
 
         {/* Navigation Links */}
-        <nav className="hidden lg:flex items-center gap-1">
+        <nav className="hidden sm:flex items-center gap-1">
           {links.map((link) => {
             const isActive = pathname === link.href;
             return (
               <Link
                 key={link.href}
                 href={link.href}
-                className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-all ${
+                className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
                   isActive
                     ? "bg-[#e5eeff] text-[#3525cd] font-semibold"
                     : "text-[#464555] hover:bg-[#f1f5f9] hover:text-[#121c28]"
@@ -56,43 +61,22 @@ export default function Navbar() {
           })}
         </nav>
 
-        {/* Demo Quick Jump */}
+        {/* Quick Action Buttons */}
         <div className="flex items-center gap-2">
           <Link
-            href="/candidate/jobs"
-            className="hidden sm:inline-flex items-center gap-1 rounded-lg border border-[#c7c4d8] bg-white px-2.5 py-1 text-xs font-medium text-[#121c28] hover:bg-[#f8f9ff] hover:border-[#777587] transition-colors"
+            href="/login"
+            className="px-3 py-1.5 rounded-lg border border-[#c7c4d8] bg-white text-xs font-medium text-[#121c28] hover:bg-[#f8f9ff] hover:border-[#777587] transition-colors"
           >
-            <span className="material-symbols-outlined text-[15px] text-[#3525cd]">work</span>
-            Find Jobs
+            Sign In
           </Link>
           <Link
-            href="/employer/jobs/new"
-            className="inline-flex items-center gap-1 rounded-lg bg-[#3525cd] px-3 py-1 text-xs font-medium text-white hover:bg-[#4f46e5] shadow-xs transition-colors"
+            href="/signup"
+            className="inline-flex items-center gap-1 rounded-lg bg-[#3525cd] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#4f46e5] shadow-xs transition-colors"
           >
-            <span className="material-symbols-outlined text-[15px]">add</span>
-            Post a Job
+            Get Started
+            <span className="material-symbols-outlined text-[15px]">arrow_forward</span>
           </Link>
         </div>
-      </div>
-
-      {/* Mobile Sub-Navigation Bar */}
-      <div className="flex lg:hidden overflow-x-auto px-4 py-1.5 gap-1 border-t border-[#c7c4d8]/40 bg-[#f8f9ff] text-xs">
-        {links.map((link) => {
-          const isActive = pathname === link.href;
-          return (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={`whitespace-nowrap px-2.5 py-1 rounded-md transition-colors ${
-                isActive
-                  ? "bg-[#e5eeff] text-[#3525cd] font-semibold"
-                  : "text-[#464555] hover:text-[#121c28]"
-              }`}
-            >
-              {link.label}
-            </Link>
-          );
-        })}
       </div>
     </header>
   );

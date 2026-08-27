@@ -70,7 +70,7 @@ export default function JobDetails({
       setIsApplied(true);
       setFeedback({
         type: "success",
-        message: "Application submitted successfully! Redirecting to applications tracker...",
+        message: "Application submitted successfully! Track your status in My Applications.",
       });
     } catch {
       setFeedback({
@@ -135,7 +135,7 @@ export default function JobDetails({
                     {job.employer?.name || "Hiring Company"}
                   </span>
                   <span>•</span>
-                  <span>Remote / Hybrid</span>
+                  <span>{job.location || "Remote / Hybrid"}</span>
                   <span>•</span>
                   <span>Full-time</span>
                 </p>
