@@ -42,8 +42,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 
         <div className="relative rounded-lg">
           {icon && (
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#777587]">
-              <span className="material-symbols-outlined text-[18px]">{icon}</span>
+            <div className="absolute inset-y-0 left-0 w-10 pl-3 flex items-center pointer-events-none text-[#777587] z-10">
+              <span className="material-symbols-outlined text-[18px] select-none">{icon}</span>
             </div>
           )}
 
