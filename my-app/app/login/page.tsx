@@ -2,15 +2,25 @@
 
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/ui/Alert";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 
 export default function Login() {
   const router = useRouter();
+
+  const [roleSelection, setRoleSelection] = useState<
+    "employer" | "candidate"
+  >("employer");
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -21,7 +31,7 @@ export default function Login() {
     }
 
     setError("");
-    setLoading(true);
+    setIsLoading(true);
 
     try {
       const response = await fetch("/api/auth/login", {
@@ -38,101 +48,139 @@ export default function Login() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || "Login failed. Please check your credentials.");
-        setLoading(false);
+        setError(data.error || "Invalid email or password.");
+        setIsLoading(false);
         return;
       }
 
       const role = data.user?.role;
-      router.push(role === "employer" ? "/employer" : "/candidate");
-      router.refresh();
+
+      if (role === "candidate") {
+        router.push("/candidate");
+        router.refresh();
+        return;
+      }
+
+      if (role === "employer") {
+        router.push("/employer");
+        router.refresh();
+        return;
+      }
+
+      setError("Invalid account role.");
+      setIsLoading(false);
     } catch {
-      setError("An unexpected error occurred. Please check your connection.");
-      setLoading(false);
+      setError("Unable to connect to the server. Please try again.");
+      setIsLoading(false);
     }
   }
 
   return (
-    <main className="flex flex-1 items-center justify-center p-6 sm:p-12">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-zinc-100">
-            Welcome back
+    <main className="flex-1 flex items-center justify-center p-4 sm:p-6 antialiased bg-[#FAFAFA]">
+      <div className="w-full max-w-[400px]">
+        {/* Branding Header */}
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#3525cd] text-white font-bold text-xl mb-3 shadow-sm">
+            AT
+          </div>
+
+          <h1 className="text-3xl font-bold tracking-tight text-[#3525cd]">
+            Apna Tracker
           </h1>
 
-          <p className="mt-2 text-sm text-slate-600 dark:text-zinc-400">
-            Login to your Job Tracker account
+          <p className="text-sm text-[#464555] mt-1.5 font-medium">
+            Sign in to your account
           </p>
         </div>
 
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-8"
-        >
-          <div>
-            <label
-              htmlFor="email"
-              className="mb-2 block text-sm font-medium text-slate-700 dark:text-zinc-300"
-            >
-              Email
-            </label>
+        {/* Auth Card */}
+        <div className="bg-white border border-[#c7c4d8] rounded-xl p-6 sm:p-8 shadow-[0_4px_12px_rgba(0,0,0,0.03)]">
+          {/* Segmented Control */}
+          <SegmentedControl
+            className="mb-5"
+            ariaLabel="Account type"
+            value={roleSelection}
+            onChange={(val) =>
+              setRoleSelection(val as "employer" | "candidate")
+            }
+            options={[
+              { value: "employer", label: "Employer", icon: "domain" },
+              { value: "candidate", label: "Candidate", icon: "person" },
+            ]}
+          />
 
-            <input
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Email Input */}
+            <Input
               id="email"
               type="email"
+              label="Email address"
+              icon="mail"
               value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="you@example.com"
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder={
+                roleSelection === "employer"
+                  ? "you@company.com"
+                  : "you@example.com"
+              }
               required
-              disabled={loading}
-              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-800"
+              autoComplete="email"
             />
-          </div>
 
-          <div>
-            <label
-              htmlFor="password"
-              className="mb-2 block text-sm font-medium text-slate-700 dark:text-zinc-300"
-            >
-              Password
-            </label>
-
-            <input
+            {/* Password Input */}
+            <Input
               id="password"
               type="password"
+              label="Password"
+              icon="lock"
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="Enter your password"
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
               required
-              disabled={loading}
-              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-500 dark:focus:ring-zinc-800"
+              autoComplete="current-password"
+              rightElement={
+                <span className="text-xs text-[#3525cd] hover:underline cursor-pointer">
+                  Forgot?
+                </span>
+              }
             />
-          </div>
 
-          {error && (
-            <p className="rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-950/50 dark:text-red-400">
-              {error}
+            {/* Error Alert */}
+            {error && (
+              <Alert
+                type="error"
+                message={error}
+                onClose={() => setError("")}
+              />
+            )}
+
+            {/* Submit Button */}
+            <div className="pt-2">
+              <Button
+                type="submit"
+                variant="primary"
+                className="w-full"
+                isLoading={isLoading}
+              >
+                Sign in
+              </Button>
+            </div>
+          </form>
+
+          {/* Footer Link */}
+          <div className="mt-6 pt-5 border-t border-[#c7c4d8]/40 text-center">
+            <p className="text-sm text-[#464555]">
+              Don&apos;t have an account?{" "}
+              <Link
+                href="/signup"
+                className="font-semibold text-[#3525cd] hover:text-[#4f46e5] transition-colors"
+              >
+                Sign up
+              </Link>
             </p>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-lg bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-zinc-200"
-          >
-            {loading ? "Signing in..." : "Sign In"}
-          </button>
-        </form>
-
-        <p className="mt-4 text-center text-sm text-slate-600 dark:text-zinc-400">
-          Don&apos;t have an account?{" "}
-          <Link
-            href="/signup"
-            className="font-medium text-slate-900 underline hover:text-slate-700 dark:text-zinc-100 dark:hover:text-zinc-300"
-          >
-            Sign up
-          </Link>
-        </p>
+          </div>
+        </div>
       </div>
     </main>
   );
