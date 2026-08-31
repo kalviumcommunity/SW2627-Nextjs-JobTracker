@@ -60,11 +60,17 @@ export default function Signup() {
         return;
       }
 
-      setSuccess("Account created successfully! Redirecting to login...");
+      setSuccess(`Welcome, ${name.trim()}! Redirecting to your workspace...`);
 
+      // Backend returns auth tokens in cookies, route directly to portal
       setTimeout(() => {
-        router.push("/login");
-      }, 1200);
+        if (role === "candidate") {
+          router.push("/candidate");
+        } else {
+          router.push("/employer");
+        }
+        router.refresh();
+      }, 1000);
     } catch {
       setError("Unable to connect to the server. Please try again.");
       setIsLoading(false);

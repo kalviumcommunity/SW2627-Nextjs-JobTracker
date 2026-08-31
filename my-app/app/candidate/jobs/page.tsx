@@ -141,28 +141,33 @@ export default function CandidateJobs() {
     }
   }
 
-  // Filtered jobs
+  // Filtered jobs with accurate search & location matching
   const filteredJobs = useMemo(() => {
     return jobs.filter((job) => {
-      const titleMatch = job.title.toLowerCase().includes(searchTerm.toLowerCase());
-      const employerMatch = (job.employer?.name || "")
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase());
+      const titleLower = job.title.toLowerCase();
+      const employerLower = (job.employer?.name || "").toLowerCase();
+      const locationLower = (job.location || "").toLowerCase();
+      const queryLower = searchTerm.toLowerCase().trim();
 
-      const matchesSearch = !searchTerm || titleMatch || employerMatch;
+      // Search match across title, employer name, and location
+      const matchesSearch =
+        !queryLower ||
+        titleLower.includes(queryLower) ||
+        employerLower.includes(queryLower) ||
+        locationLower.includes(queryLower);
 
-      // Location filter
+      // Location match
       let matchesLocation = true;
       if (selectedLocation !== "All") {
-        if (selectedLocation === "Remote") {
-          matchesLocation = job.title.toLowerCase().includes("remote") || true;
-        }
+        const filterLoc = selectedLocation.toLowerCase();
+        matchesLocation =
+          locationLower.includes(filterLoc) || titleLower.includes(filterLoc);
       }
 
-      // Role Type filter
+      // Role Type match
       let matchesType = true;
       if (selectedType !== "All") {
-        matchesType = job.title.toLowerCase().includes(selectedType.toLowerCase());
+        matchesType = titleLower.includes(selectedType.toLowerCase());
       }
 
       return matchesSearch && matchesLocation && matchesType;
@@ -233,7 +238,7 @@ export default function CandidateJobs() {
           <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#121c28]">
-                {isLoading ? "Finding jobs..." : `${filteredJobs.length} jobs found`}
+                {isLoading ? "Finding jobs..." : `${filteredJobs.length} jobs available`}
               </h1>
               <p className="text-xs sm:text-sm text-[#464555] mt-0.5">
                 Explore open positions from verified employers
@@ -249,7 +254,7 @@ export default function CandidateJobs() {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => handleSearchChange(e.target.value)}
-                placeholder="Search jobs, skills, or companies"
+                placeholder="Search jobs, skills, location, or company"
                 className="w-full pl-9 pr-4 py-2 bg-white border border-[#c7c4d8] rounded-lg text-xs sm:text-sm text-[#121c28] placeholder:text-[#9CA3AF] focus:ring-4 focus:ring-[#3525cd]/10 focus:border-[#3525cd] outline-none transition-all shadow-2xs"
               />
               {searchTerm && (
@@ -275,8 +280,11 @@ export default function CandidateJobs() {
               >
                 <option value="All">All Locations</option>
                 <option value="Remote">Remote</option>
-                <option value="On-site">On-site</option>
                 <option value="Hybrid">Hybrid</option>
+                <option value="On-site">On-site</option>
+                <option value="Delhi">Delhi</option>
+                <option value="Bengaluru">Bengaluru</option>
+                <option value="Mumbai">Mumbai</option>
               </select>
               <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-[16px] text-[#777587] pointer-events-none">
                 arrow_drop_down
@@ -294,9 +302,9 @@ export default function CandidateJobs() {
                 <option value="Frontend">Frontend</option>
                 <option value="Backend">Backend</option>
                 <option value="Full Stack">Full Stack</option>
+                <option value="Engineer">Engineer</option>
                 <option value="Design">Design</option>
                 <option value="Product">Product</option>
-                <option value="Data">Data</option>
               </select>
               <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-[16px] text-[#777587] pointer-events-none">
                 arrow_drop_down
