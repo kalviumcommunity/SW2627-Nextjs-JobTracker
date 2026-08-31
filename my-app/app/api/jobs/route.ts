@@ -2,13 +2,46 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth/guard";
 
+const DEFAULT_PAGE = 1;
+const DEFAULT_LIMIT = 10;
+const MAX_LIMIT = 100;
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const employerId = searchParams.get("employerId")?.trim();
     const search = searchParams.get("search")?.trim();
     const location = searchParams.get("location")?.trim();
+    const pageParam = searchParams.get("page");
+    const limitParam = searchParams.get("limit");
 
+    // 1. Validate and parse pagination parameters
+    let page = DEFAULT_PAGE;
+    let limit = DEFAULT_LIMIT;
+
+    if (pageParam !== null) {
+      const parsedPage = Number(pageParam);
+      if (!Number.isInteger(parsedPage) || parsedPage < 1) {
+        return NextResponse.json(
+          { error: "Invalid 'page' parameter: must be a positive integer" },
+          { status: 400 }
+        );
+      }
+      page = parsedPage;
+    }
+
+    if (limitParam !== null) {
+      const parsedLimit = Number(limitParam);
+      if (!Number.isInteger(parsedLimit) || parsedLimit < 1) {
+        return NextResponse.json(
+          { error: "Invalid 'limit' parameter: must be a positive integer" },
+          { status: 400 }
+        );
+      }
+      limit = Math.min(parsedLimit, MAX_LIMIT);
+    }
+
+    // 2. Build filter conditions
     const whereClause: Record<string, unknown> = {};
 
     if (employerId) {
@@ -29,32 +62,54 @@ export async function GET(request: Request) {
       };
     }
 
-    // Single consolidated query filter for employerId, title search, and location
-    const jobs = await prisma.job.findMany({
-      where:
-        Object.keys(whereClause).length > 0
-          ? whereClause
-          : undefined,
-      include: {
-        employer: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        _count: {
-          select: {
-            applications: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    const queryWhere =
+      Object.keys(whereClause).length > 0 ? whereClause : undefined;
 
-    return NextResponse.json({ jobs }, { status: 200 });
+    // 3. Fetch total count and paginated records concurrently
+    const skip = (page - 1) * limit;
+
+    const [total, jobs] = await Promise.all([
+      prisma.job.count({
+        where: queryWhere,
+      }),
+      prisma.job.findMany({
+        where: queryWhere,
+        skip,
+        take: limit,
+        include: {
+          employer: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          _count: {
+            select: {
+              applications: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      }),
+    ]);
+
+    const totalPages = Math.ceil(total / limit) || 1;
+
+    return NextResponse.json(
+      {
+        jobs,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages,
+        },
+      },
+      { status: 200 }
+    );
   } catch {
     return NextResponse.json(
       { error: "Failed to fetch jobs" },
