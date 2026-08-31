@@ -17,10 +17,8 @@ export default function Navbar() {
 
   const links = [
     { href: "/", label: "Home" },
-    { href: "/login", label: "Sign In" },
-    { href: "/signup", label: "Sign Up" },
-    { href: "/role-selection", label: "Portals" },
     { href: "/candidate/jobs", label: "Explore Jobs" },
+    { href: "/role-selection", label: "Portals" },
   ];
 
   return (

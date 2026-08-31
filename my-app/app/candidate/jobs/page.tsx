@@ -160,8 +160,16 @@ export default function CandidateJobs() {
       let matchesLocation = true;
       if (selectedLocation !== "All") {
         const filterLoc = selectedLocation.toLowerCase();
-        matchesLocation =
-          locationLower.includes(filterLoc) || titleLower.includes(filterLoc);
+        if (filterLoc === "on-site") {
+          matchesLocation =
+            locationLower.includes("on-site") ||
+            locationLower.includes("onsite") ||
+            titleLower.includes("on-site") ||
+            titleLower.includes("onsite");
+        } else {
+          matchesLocation =
+            locationLower.includes(filterLoc) || titleLower.includes(filterLoc);
+        }
       }
 
       // Role Type match
