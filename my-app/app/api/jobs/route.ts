@@ -187,9 +187,13 @@ export async function POST(request: Request) {
       },
       { status: 201 }
     );
-  } catch {
+  } catch (err: unknown) {
+    console.error("POST /api/jobs error:", err);
     return NextResponse.json(
-      { error: "Failed to create job" },
+      {
+        error: "Failed to create job",
+        details: err instanceof Error ? err.message : String(err),
+      },
       { status: 500 }
     );
   }
