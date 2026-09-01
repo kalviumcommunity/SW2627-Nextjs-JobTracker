@@ -139,7 +139,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { title, location } = body;
+    const { title, location, description } = body;
 
     if (!title || typeof title !== "string" || title.trim().length === 0) {
       return NextResponse.json(
@@ -151,6 +151,11 @@ export async function POST(request: Request) {
     const sanitizedLocation =
       location && typeof location === "string" && location.trim().length > 0
         ? location.trim()
+        : null;
+
+    const sanitizedDescription =
+      description && typeof description === "string" && description.trim().length > 0
+        ? description.trim()
         : null;
 
     const employer = await prisma.employer.findUnique({
@@ -168,6 +173,7 @@ export async function POST(request: Request) {
       data: {
         title: title.trim(),
         location: sanitizedLocation,
+        description: sanitizedDescription,
         employerId,
       },
       include: {

@@ -25,13 +25,12 @@ export default function ApplicantDetails({
     let ignore = false;
     async function loadApp() {
       try {
-        const res = await fetch("/api/applications");
+        const res = await fetch(`/api/applications/${applicationId}`);
         if (res.ok) {
           const data = await res.json();
-          const found = (data.applications || []).find(
-            (a: EmployerApplication) => a.id === applicationId
-          );
-          if (!ignore) setApplication(found || null);
+          if (!ignore) setApplication(data.application || null);
+        } else {
+          if (!ignore) setApplication(null);
         }
       } catch {
         // Silently handle
@@ -51,11 +50,10 @@ export default function ApplicantDetails({
     setFeedback(null);
 
     try {
-      const response = await fetch("/api/applications/batch", {
+      const response = await fetch(`/api/applications/${applicationId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          applicationIds: [applicationId],
           status: newStatus,
         }),
       });
