@@ -15,33 +15,25 @@ export async function GET(request: Request) {
     const pageParam = searchParams.get("page");
     const limitParam = searchParams.get("limit");
 
-    // 1. Validate and parse pagination parameters
+    // Parse pagination parameters
     let page = DEFAULT_PAGE;
     let limit = DEFAULT_LIMIT;
 
     if (pageParam !== null) {
       const parsedPage = Number(pageParam);
-      if (!Number.isInteger(parsedPage) || parsedPage < 1) {
-        return NextResponse.json(
-          { error: "Invalid 'page' parameter: must be a positive integer" },
-          { status: 400 }
-        );
+      if (Number.isInteger(parsedPage) && parsedPage >= 1) {
+        page = parsedPage;
       }
-      page = parsedPage;
     }
 
     if (limitParam !== null) {
       const parsedLimit = Number(limitParam);
-      if (!Number.isInteger(parsedLimit) || parsedLimit < 1) {
-        return NextResponse.json(
-          { error: "Invalid 'limit' parameter: must be a positive integer" },
-          { status: 400 }
-        );
+      if (Number.isInteger(parsedLimit) && parsedLimit >= 1) {
+        limit = Math.min(parsedLimit, MAX_LIMIT);
       }
-      limit = Math.min(parsedLimit, MAX_LIMIT);
     }
 
-    // 2. Build filter conditions
+    // Build filter conditions
     const whereClause: Record<string, unknown> = {};
 
     if (employerId) {
@@ -65,7 +57,6 @@ export async function GET(request: Request) {
     const queryWhere =
       Object.keys(whereClause).length > 0 ? whereClause : undefined;
 
-    // 3. Fetch total count and paginated records concurrently
     const skip = (page - 1) * limit;
 
     const [total, jobs] = await Promise.all([

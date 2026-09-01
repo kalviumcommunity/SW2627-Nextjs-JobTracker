@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -9,6 +9,7 @@ import { Alert } from "@/components/ui/Alert";
 interface EmployerJobItem {
   id: string;
   title: string;
+  location?: string | null;
   employerId: string;
   createdAt: string | Date;
   employer?: {
@@ -20,22 +21,80 @@ interface EmployerJobItem {
   };
 }
 
+interface FetchJobsResult {
+  jobs?: EmployerJobItem[];
+  error?: string;
+}
+
+async function fetchEmployerJobsPayload(): Promise<FetchJobsResult> {
+  const authRes = await fetch("/api/applications");
+  const authData = await authRes.json().catch(() => ({}));
+  const sampleJobEmployerId = authData.applications?.[0]?.job?.employer?.id;
+
+  let response;
+  if (sampleJobEmployerId) {
+    response = await fetch(`/api/employer/${sampleJobEmployerId}/jobs`);
+  }
+
+  if (!response || !response.ok) {
+    response = await fetch("/api/jobs");
+  }
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      return { error: "Please log in as an employer to view your job postings." };
+    }
+    throw new Error("Failed to load your job postings.");
+  }
+
+  const data = await response.json();
+  return { jobs: data.jobs || [] };
+}
+
 export default function ManageJobs() {
   const [jobs, setJobs] = useState<EmployerJobItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const loadJobs = useCallback(async () => {
+  useEffect(() => {
+    let ignore = false;
+
+    fetchEmployerJobsPayload()
+      .then((res) => {
+        if (ignore) return;
+        if (res.error) {
+          setError(res.error);
+        } else if (res.jobs) {
+          setJobs(res.jobs);
+        }
+      })
+      .catch((err) => {
+        if (!ignore) {
+          setError(
+            err instanceof Error ? err.message : "Unable to connect to the server."
+          );
+        }
+      })
+      .finally(() => {
+        if (!ignore) setIsLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  const handleRefresh = async () => {
     setIsLoading(true);
     setError("");
 
     try {
-      const response = await fetch("/api/jobs");
-      if (!response.ok) {
-        throw new Error("Failed to load your job postings.");
+      const res = await fetchEmployerJobsPayload();
+      if (res.error) {
+        setError(res.error);
+      } else if (res.jobs) {
+        setJobs(res.jobs);
       }
-      const data = await response.json();
-      setJobs(data.jobs || []);
     } catch (err: unknown) {
       setError(
         err instanceof Error ? err.message : "Unable to connect to the server."
@@ -43,31 +102,7 @@ export default function ManageJobs() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
-
-  useEffect(() => {
-    let ignore = false;
-    async function init() {
-      try {
-        const response = await fetch("/api/jobs");
-        if (!response.ok) {
-          if (!ignore) setError("Failed to load your job postings.");
-          return;
-        }
-        const data = await response.json();
-        if (!ignore) setJobs(data.jobs || []);
-      } catch {
-        if (!ignore) setError("Unable to connect to the server.");
-      } finally {
-        if (!ignore) setIsLoading(false);
-      }
-    }
-
-    init();
-    return () => {
-      ignore = true;
-    };
-  }, []);
+  };
 
   return (
     <AppShell role="employer">
@@ -83,10 +118,10 @@ export default function ManageJobs() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <button
               type="button"
-              onClick={loadJobs}
+              onClick={handleRefresh}
               className="p-2 border border-[#c7c4d8] rounded-lg bg-white hover:bg-[#f8f9ff] text-[#464555] hover:text-[#121c28] transition-colors"
               title="Refresh job postings"
             >
@@ -107,17 +142,18 @@ export default function ManageJobs() {
 
         {/* Content */}
         {isLoading ? (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array.from({ length: 3 }).map((_, i) => (
               <div
                 key={i}
-                className="bg-white border border-[#c7c4d8] rounded-xl p-5 animate-pulse flex justify-between items-center"
+                className="bg-white border border-[#c7c4d8] rounded-xl p-5 animate-pulse flex flex-col justify-between h-48"
               >
                 <div className="space-y-2">
+                  <div className="w-20 h-4 bg-[#dfe9fa] rounded-full" />
                   <div className="w-48 h-5 bg-[#dfe9fa] rounded" />
                   <div className="w-32 h-3.5 bg-[#dfe9fa] rounded" />
                 </div>
-                <div className="w-28 h-8 bg-[#dfe9fa] rounded-lg" />
+                <div className="w-full h-8 bg-[#dfe9fa] rounded-lg mt-auto" />
               </div>
             ))}
           </div>
@@ -158,7 +194,7 @@ export default function ManageJobs() {
                   </h3>
 
                   <p className="text-xs text-[#464555] mb-4">
-                    {job.employer?.name || "Your Company"} • Remote / Hybrid
+                    {job.employer?.name || "Your Company"} • {job.location || "Remote / Hybrid"}
                   </p>
 
                   <div className="mt-auto pt-3 border-t border-[#c7c4d8]/40 flex justify-between items-center">
