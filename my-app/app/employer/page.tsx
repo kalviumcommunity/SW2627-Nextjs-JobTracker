@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { MetricCard } from "@/components/ui/MetricCard";
@@ -16,139 +16,155 @@ interface JobItem {
   };
 }
 
-interface EmployerStatsData {
+interface EmployerStatsResponse {
   totalJobs?: number;
-  totalJobsPosted?: number;
   totalApplications?: number;
+  statusBreakdown?: {
+    pending: number;
+    viewed: number;
+    rejected: number;
+  };
   pendingApplications?: number;
-  pendingCount?: number;
   viewedApplications?: number;
-  viewedCount?: number;
   rejectedApplications?: number;
-  rejectedCount?: number;
+}
+
+interface DashboardPayload {
+  applications?: EmployerApplication[];
+  jobs?: JobItem[];
+  stats?: EmployerStatsResponse | null;
+  error?: string;
+}
+
+// Single centralized helper to fetch employer dashboard data and stats
+async function fetchDashboardPayload(): Promise<DashboardPayload> {
+  const [appsRes, jobsRes] = await Promise.all([
+    fetch("/api/applications"),
+    fetch("/api/jobs"),
+  ]);
+
+  if (appsRes.status === 401 || jobsRes.status === 401) {
+    return { error: "Please log in to your employer account." };
+  }
+
+  if (!appsRes.ok || !jobsRes.ok) {
+    throw new Error("Failed to load recruitment dashboard data.");
+  }
+
+  const [appsData, jobsData] = await Promise.all([
+    appsRes.json(),
+    jobsRes.json(),
+  ]);
+
+  const fetchedApps: EmployerApplication[] = appsData.applications || [];
+  const fetchedJobs: JobItem[] = jobsData.jobs || [];
+
+  let fetchedStats: EmployerStatsResponse | null = null;
+  const employerId = fetchedJobs[0]?.employerId;
+
+  if (employerId) {
+    try {
+      const statsRes = await fetch(`/api/employer/${employerId}/stats`);
+      if (statsRes.ok) {
+        const statsData = await statsRes.json();
+        fetchedStats = statsData.stats || statsData;
+      }
+    } catch {
+      // Graceful fallback to computed stats
+    }
+  }
+
+  return {
+    applications: fetchedApps,
+    jobs: fetchedJobs,
+    stats: fetchedStats,
+  };
 }
 
 export default function EmployerDashboard() {
   const [applications, setApplications] = useState<EmployerApplication[]>([]);
   const [jobs, setJobs] = useState<JobItem[]>([]);
-  const [apiStats, setApiStats] = useState<EmployerStatsData | null>(null);
+  const [apiStats, setApiStats] = useState<EmployerStatsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
-
-  const fetchData = useCallback(async () => {
-    try {
-      const [appsRes, jobsRes] = await Promise.all([
-        fetch("/api/applications"),
-        fetch("/api/jobs"),
-      ]);
-
-      let fetchedApps: EmployerApplication[] = [];
-      let fetchedJobs: JobItem[] = [];
-
-      if (appsRes.ok) {
-        const appsData = await appsRes.json();
-        fetchedApps = appsData.applications || [];
-        setApplications(fetchedApps);
-      } else if (appsRes.status === 401) {
-        setError("Please log in to your employer account.");
-      }
-
-      if (jobsRes.ok) {
-        const jobsData = await jobsRes.json();
-        fetchedJobs = jobsData.jobs || [];
-        setJobs(fetchedJobs);
-      }
-
-      // If an employerId is available, attempt to fetch backend stats API
-      const employerId = fetchedJobs[0]?.employerId;
-      if (employerId) {
-        try {
-          const statsRes = await fetch(`/api/employer/${employerId}/stats`);
-          if (statsRes.ok) {
-            const statsData = await statsRes.json();
-            setApiStats(statsData.stats || statsData);
-          }
-        } catch {
-          // Fallback to computed statistics from authenticated application/job records
-        }
-      }
-    } catch {
-      setError("Unable to connect to server. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
 
   useEffect(() => {
     let ignore = false;
 
-    async function loadInitial() {
-      try {
-        const [appsRes, jobsRes] = await Promise.all([
-          fetch("/api/applications"),
-          fetch("/api/jobs"),
-        ]);
-
-        let fetchedApps: EmployerApplication[] = [];
-        let fetchedJobs: JobItem[] = [];
-
-        if (appsRes.ok) {
-          const appsData = await appsRes.json();
-          fetchedApps = appsData.applications || [];
-          if (!ignore) setApplications(fetchedApps);
-        } else if (appsRes.status === 401) {
-          if (!ignore) setError("Please log in to your employer account.");
+    fetchDashboardPayload()
+      .then((data) => {
+        if (ignore) return;
+        if (data.error) {
+          setError(data.error);
+        } else {
+          if (data.applications) setApplications(data.applications);
+          if (data.jobs) setJobs(data.jobs);
+          if (data.stats) setApiStats(data.stats);
         }
-
-        if (jobsRes.ok) {
-          const jobsData = await jobsRes.json();
-          fetchedJobs = jobsData.jobs || [];
-          if (!ignore) setJobs(fetchedJobs);
+      })
+      .catch((err) => {
+        if (!ignore) {
+          setError(
+            err instanceof Error ? err.message : "Unable to connect to server. Please try again."
+          );
         }
-
-        const employerId = fetchedJobs[0]?.employerId;
-        if (employerId) {
-          try {
-            const statsRes = await fetch(`/api/employer/${employerId}/stats`);
-            if (statsRes.ok) {
-              const statsData = await statsRes.json();
-              if (!ignore) setApiStats(statsData.stats || statsData);
-            }
-          } catch {
-            // Silently fallback
-          }
-        }
-      } catch {
-        if (!ignore) setError("Unable to connect to server. Please try again.");
-      } finally {
+      })
+      .finally(() => {
         if (!ignore) setIsLoading(false);
-      }
-    }
+      });
 
-    loadInitial();
     return () => {
       ignore = true;
     };
   }, []);
 
-  const handleRefresh = useCallback(() => {
+  const handleRefresh = async () => {
     setIsLoading(true);
     setError("");
-    fetchData();
-  }, [fetchData]);
 
-  // Compute stats from live records as primary / fallback
-  const computedStats = useMemo(() => {
+    try {
+      const data = await fetchDashboardPayload();
+      if (data.error) {
+        setError(data.error);
+      } else {
+        if (data.applications) setApplications(data.applications);
+        if (data.jobs) setJobs(data.jobs);
+        if (data.stats) setApiStats(data.stats);
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Unable to connect to server. Please try again."
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Consolidated statistics combining API payload and live records
+  const stats = useMemo(() => {
+    if (apiStats) {
+      return {
+        totalJobs: apiStats.totalJobs ?? jobs.length,
+        totalApplications: apiStats.totalApplications ?? applications.length,
+        pendingApplications:
+          apiStats.statusBreakdown?.pending ?? apiStats.pendingApplications ?? 0,
+        viewedApplications:
+          apiStats.statusBreakdown?.viewed ?? apiStats.viewedApplications ?? 0,
+        rejectedApplications:
+          apiStats.statusBreakdown?.rejected ?? apiStats.rejectedApplications ?? 0,
+      };
+    }
+
     let pending = 0;
     let viewed = 0;
     let rejected = 0;
 
-    applications.forEach((a) => {
-      const s = (a.status || "").toLowerCase();
+    for (const app of applications) {
+      const s = (app.status || "").toLowerCase();
       if (s === "viewed" || s === "reviewing" || s === "interviewed") viewed++;
       else if (s === "rejected" || s === "not selected") rejected++;
       else pending++;
-    });
+    }
 
     return {
       totalJobs: jobs.length,
@@ -157,19 +173,7 @@ export default function EmployerDashboard() {
       viewedApplications: viewed,
       rejectedApplications: rejected,
     };
-  }, [applications, jobs]);
-
-  // Resolved statistics prioritizing backend API payload when present
-  const totalJobsCount =
-    apiStats?.totalJobsPosted ?? apiStats?.totalJobs ?? computedStats.totalJobs;
-  const totalAppsCount =
-    apiStats?.totalApplications ?? computedStats.totalApplications;
-  const pendingAppsCount =
-    apiStats?.pendingApplications ?? apiStats?.pendingCount ?? computedStats.pendingApplications;
-  const viewedAppsCount =
-    apiStats?.viewedApplications ?? apiStats?.viewedCount ?? computedStats.viewedApplications;
-  const rejectedAppsCount =
-    apiStats?.rejectedApplications ?? apiStats?.rejectedCount ?? computedStats.rejectedApplications;
+  }, [apiStats, applications, jobs]);
 
   return (
     <AppShell role="employer">
@@ -210,7 +214,7 @@ export default function EmployerDashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           <MetricCard
             label="Total Jobs Posted"
-            value={totalJobsCount}
+            value={stats.totalJobs}
             subtext="Live listings attracting talent"
             icon="work"
             iconColor="primary"
@@ -218,7 +222,7 @@ export default function EmployerDashboard() {
           />
           <MetricCard
             label="Total Applications"
-            value={totalAppsCount}
+            value={stats.totalApplications}
             subtext="Across all posted jobs"
             icon="group"
             iconColor="primary"
@@ -226,7 +230,7 @@ export default function EmployerDashboard() {
           />
           <MetricCard
             label="Pending Applications"
-            value={pendingAppsCount}
+            value={stats.pendingApplications}
             subtext="Awaiting your evaluation"
             icon="schedule"
             iconColor="amber"
@@ -234,7 +238,7 @@ export default function EmployerDashboard() {
           />
           <MetricCard
             label="Viewed Applications"
-            value={viewedAppsCount}
+            value={stats.viewedApplications}
             subtext="Reviewed by hiring team"
             icon="visibility"
             iconColor="emerald"
@@ -242,7 +246,7 @@ export default function EmployerDashboard() {
           />
           <MetricCard
             label="Rejected Applications"
-            value={rejectedAppsCount}
+            value={stats.rejectedApplications}
             subtext="Not moved forward"
             icon="cancel"
             iconColor="rose"

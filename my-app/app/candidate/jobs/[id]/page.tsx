@@ -22,14 +22,17 @@ export default function JobDetails({
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   useEffect(() => {
+    let ignore = false;
+
     async function loadJob() {
       setIsLoading(true);
       try {
-        const res = await fetch("/api/jobs");
+        const res = await fetch(`/api/jobs/${jobId}`);
         if (res.ok) {
           const data = await res.json();
-          const found = (data.jobs || []).find((j: JobData) => j.id === jobId);
-          setJob(found || null);
+          if (!ignore) setJob(data.job || null);
+        } else {
+          if (!ignore) setJob(null);
         }
 
         // Check if already applied
@@ -39,15 +42,19 @@ export default function JobDetails({
           const hasApplied = (appData.applications || []).some(
             (app: { jobId: string }) => app.jobId === jobId
           );
-          setIsApplied(hasApplied);
+          if (!ignore) setIsApplied(hasApplied);
         }
       } catch {
         // Handle error silently
       } finally {
-        setIsLoading(false);
+        if (!ignore) setIsLoading(false);
       }
     }
+
     loadJob();
+    return () => {
+      ignore = true;
+    };
   }, [jobId]);
 
   async function handleApply() {
@@ -167,8 +174,9 @@ export default function JobDetails({
             {/* Role Overview */}
             <div className="space-y-4">
               <h2 className="text-base font-bold text-[#121c28]">About this role</h2>
-              <p className="text-sm text-[#464555] leading-relaxed">
-                Join {job.employer?.name || "our team"} to work on impactful projects with cutting-edge engineering standards. We are looking for talented candidates who want to build high-performance, accessible, and scalable applications.
+              <p className="text-sm text-[#464555] leading-relaxed whitespace-pre-line">
+                {job.description ||
+                  `Join ${job.employer?.name || "our team"} to work on impactful projects with cutting-edge engineering standards. We are looking for talented candidates who want to build high-performance, accessible, and scalable applications.`}
               </p>
             </div>
 

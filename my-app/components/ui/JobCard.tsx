@@ -17,6 +17,7 @@ export interface JobData {
   };
   // Optional extra presentation properties
   location?: string;
+  description?: string | null;
   tags?: string[];
   salary?: string;
   isNew?: boolean;
