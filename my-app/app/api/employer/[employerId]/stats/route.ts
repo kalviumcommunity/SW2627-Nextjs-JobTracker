@@ -1,14 +1,12 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyAccessToken } from "@/lib/auth/tokens";
+import { requireRole } from "@/lib/auth/guard";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ employerId: string }> }
 ) {
   try {
-    // Get employer ID from URL
     const { employerId } = await params;
 
     if (!employerId) {
@@ -18,39 +16,18 @@ export async function GET(
       );
     }
 
-    // Check authentication
-    const cookieStore = await cookies();
-    const token = cookieStore.get("accessToken")?.value;
+    // Only authenticated employers can access this route
+    const auth = await requireRole("employer");
 
-    if (!token) {
+    if (!auth.authorized) {
       return NextResponse.json(
-        { error: "Authentication required" },
-        { status: 401 }
-      );
-    }
-
-    // Verify access token
-    let payload;
-
-    try {
-      payload = verifyAccessToken(token);
-    } catch {
-      return NextResponse.json(
-        { error: "Invalid or expired access token" },
-        { status: 401 }
-      );
-    }
-
-    // Only employers can access employer statistics
-    if (payload.role !== "employer") {
-      return NextResponse.json(
-        { error: "Only employers can access employer statistics" },
-        { status: 403 }
+        { error: auth.error },
+        { status: auth.status }
       );
     }
 
     // Employer can only access their own statistics
-    if (payload.userId !== employerId) {
+    if (auth.payload.userId !== employerId) {
       return NextResponse.json(
         { error: "You are not authorized to access these statistics" },
         { status: 403 }
@@ -86,18 +63,20 @@ export async function GET(
       },
     });
 
-    // Convert grouped result into simple counts
     const pending =
-      statusBreakdown.find((item) => item.status === "pending")?._count._all ??
-      0;
+      statusBreakdown.find(
+        (item) => item.status === "pending"
+      )?._count._all ?? 0;
 
     const viewed =
-      statusBreakdown.find((item) => item.status === "viewed")?._count._all ??
-      0;
+      statusBreakdown.find(
+        (item) => item.status === "viewed"
+      )?._count._all ?? 0;
 
     const rejected =
-      statusBreakdown.find((item) => item.status === "rejected")?._count._all ??
-      0;
+      statusBreakdown.find(
+        (item) => item.status === "rejected"
+      )?._count._all ?? 0;
 
     return NextResponse.json(
       {
