@@ -42,6 +42,7 @@ export default function Login() {
         body: JSON.stringify({
           email: email.trim().toLowerCase(),
           password,
+          role: roleSelection,
         }),
       });
 

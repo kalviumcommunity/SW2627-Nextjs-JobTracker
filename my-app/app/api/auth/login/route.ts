@@ -8,7 +8,7 @@ import { createSession } from "@/lib/auth/session";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { email, password } = body;
+    const { email, password, role: requestedRole } = body;
 
     if (!email || !password) {
       return NextResponse.json(
@@ -17,21 +17,42 @@ export async function POST(request: Request) {
       );
     }
 
-    const candidate = await prisma.candidate.findUnique({
-      where: { email },
-    });
+    const normalizedEmail = email.trim().toLowerCase();
 
-    let employer = null;
-    let role: "candidate" | "employer" = "candidate";
-    let user = candidate;
+    let user = null;
+    let resolvedRole: "candidate" | "employer" = "candidate";
 
-    if (!user) {
-      employer = await prisma.employer.findUnique({
-        where: { email },
+    if (requestedRole === "employer") {
+      const employer = await prisma.employer.findUnique({
+        where: { email: normalizedEmail },
       });
       if (employer) {
-        user = employer as unknown as typeof candidate;
-        role = "employer";
+        user = employer;
+        resolvedRole = "employer";
+      } else {
+        const candidate = await prisma.candidate.findUnique({
+          where: { email: normalizedEmail },
+        });
+        if (candidate) {
+          user = candidate;
+          resolvedRole = "candidate";
+        }
+      }
+    } else {
+      const candidate = await prisma.candidate.findUnique({
+        where: { email: normalizedEmail },
+      });
+      if (candidate) {
+        user = candidate;
+        resolvedRole = "candidate";
+      } else {
+        const employer = await prisma.employer.findUnique({
+          where: { email: normalizedEmail },
+        });
+        if (employer) {
+          user = employer;
+          resolvedRole = "employer";
+        }
       }
     }
 
@@ -51,11 +72,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const accessToken = createAccessToken(user.id, role);
+    const accessToken = createAccessToken(user.id, resolvedRole);
     const temporarySessionId = crypto.randomUUID();
     const refreshToken = createRefreshToken(user.id, temporarySessionId);
 
-    const session = await createSession(user.id, role, refreshToken);
+    const session = await createSession(user.id, resolvedRole, refreshToken);
     const finalRefreshToken = createRefreshToken(user.id, session.id);
 
     await prisma.session.update({
@@ -77,7 +98,7 @@ export async function POST(request: Request) {
           id: user.id,
           name: user.name,
           email: user.email,
-          role,
+          role: resolvedRole,
         },
       },
       { status: 200 }
