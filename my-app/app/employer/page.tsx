@@ -41,7 +41,7 @@ interface DashboardPayload {
 async function fetchDashboardPayload(): Promise<DashboardPayload> {
   const [appsRes, jobsRes] = await Promise.all([
     fetch("/api/applications"),
-    fetch("/api/jobs?limit=100"),
+    fetch("/api/jobs?mine=true&limit=100"),
   ]);
 
   if (appsRes.status === 401 || jobsRes.status === 401) {
