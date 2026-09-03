@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 
 export default function EmployerSettings() {
+  // TODO: fetch real company data from /api/employer/settings and wire up save
   const [companyName, setCompanyName] = useState("Acme Corporation");
   const [email, setEmail] = useState("employer@company.com");
   const [website, setWebsite] = useState("https://example.com");

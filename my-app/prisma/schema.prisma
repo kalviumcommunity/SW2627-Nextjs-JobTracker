@@ -36,6 +36,9 @@ model Session {
   expiresAt        DateTime
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
+
+  @@index([candidateId])
+  @@index([employerId])
 }
 
 model Job {
@@ -47,6 +50,8 @@ model Job {
   employer     Employer      @relation(fields: [employerId], references: [id])
   applications Application[]
   createdAt    DateTime      @default(now())
+
+  @@index([employerId])
 }
 
 model Application {
@@ -60,4 +65,5 @@ model Application {
   updatedAt   DateTime  @updatedAt
 
   @@unique([candidateId, jobId])
+  @@index([jobId])
 }

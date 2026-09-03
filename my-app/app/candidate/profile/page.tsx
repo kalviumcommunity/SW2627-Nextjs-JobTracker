@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 
 export default function CandidateProfile() {
+  // TODO: fetch real user data from /api/candidate/profile and wire up save
   const [name, setName] = useState("Jane Doe");
   const [email, setEmail] = useState("candidate@example.com");
   const [skills, setSkills] = useState("React, TypeScript, Next.js, Tailwind CSS");

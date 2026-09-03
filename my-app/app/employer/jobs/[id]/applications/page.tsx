@@ -5,6 +5,35 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { ApplicationsTable, EmployerApplication } from "@/components/employer/ApplicationsTable";
 
+async function fetchJobApplicationsPayload(jobId: string): Promise<{
+  applications: EmployerApplication[];
+  jobTitle: string;
+}> {
+  const [appsRes, jobRes] = await Promise.all([
+    fetch(`/api/applications?jobId=${jobId}`),
+    fetch(`/api/jobs/${jobId}`).catch(() => null),
+  ]);
+
+  if (!appsRes.ok) {
+    if (appsRes.status === 401) {
+      throw new Error("Please sign in as an employer to view applicants.");
+    }
+    throw new Error("Failed to load applicants for this job.");
+  }
+
+  const appsData = await appsRes.json();
+  let title = "";
+  if (jobRes && jobRes.ok) {
+    const jobData = await jobRes.json();
+    title = jobData.job?.title || jobData.title || "";
+  }
+
+  return {
+    applications: appsData.applications || [],
+    jobTitle: title,
+  };
+}
+
 export default function JobApplicants({
   params,
 }: {
@@ -23,22 +52,10 @@ export default function JobApplicants({
     setError("");
 
     try {
-      // Fetch applications specifically for this job
-      const response = await fetch(`/api/applications?jobId=${jobId}`);
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error("Please sign in as an employer to view applicants.");
-        }
-        throw new Error("Failed to load applicants for this job.");
-      }
-
-      const data = await response.json();
-      const apps = data.applications || [];
-      setApplications(apps);
-
-      if (apps.length > 0 && apps[0].job?.title) {
-        setJobTitle(apps[0].job.title);
+      const data = await fetchJobApplicationsPayload(jobId);
+      setApplications(data.applications);
+      if (data.jobTitle) {
+        setJobTitle(data.jobTitle);
       }
     } catch (err: unknown) {
       setError(
@@ -51,33 +68,26 @@ export default function JobApplicants({
 
   useEffect(() => {
     let ignore = false;
-    async function load() {
-      try {
-        const response = await fetch(`/api/applications?jobId=${jobId}`);
-        if (!response.ok) {
-          if (response.status === 401) {
-            if (!ignore) setError("Please sign in as an employer to view applicants.");
-            return;
-          }
-          if (!ignore) setError("Failed to load applicants for this job.");
-          return;
-        }
-        const data = await response.json();
+    fetchJobApplicationsPayload(jobId)
+      .then((data) => {
         if (!ignore) {
-          const apps = data.applications || [];
-          setApplications(apps);
-          if (apps.length > 0 && apps[0].job?.title) {
-            setJobTitle(apps[0].job.title);
+          setApplications(data.applications);
+          if (data.jobTitle) {
+            setJobTitle(data.jobTitle);
           }
         }
-      } catch {
-        if (!ignore) setError("Unable to connect to the server.");
-      } finally {
+      })
+      .catch((err: unknown) => {
+        if (!ignore) {
+          setError(
+            err instanceof Error ? err.message : "Unable to connect to the server."
+          );
+        }
+      })
+      .finally(() => {
         if (!ignore) setIsLoading(false);
-      }
-    }
+      });
 
-    load();
     return () => {
       ignore = true;
     };

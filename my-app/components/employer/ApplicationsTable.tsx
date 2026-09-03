@@ -5,6 +5,7 @@ import Link from "next/link";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Alert } from "@/components/ui/Alert";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { normalizeStatus } from "@/lib/status";
 
 export interface EmployerApplication {
   id: string;
@@ -61,14 +62,7 @@ export function ApplicationsTable({
 
       let matchesStatus = true;
       if (statusFilter !== "all") {
-        const s = (app.status || "").toLowerCase();
-        if (statusFilter === "pending") {
-          matchesStatus = s === "pending" || s === "pending review";
-        } else if (statusFilter === "viewed") {
-          matchesStatus = s === "viewed" || s === "reviewing" || s === "interviewed";
-        } else if (statusFilter === "rejected") {
-          matchesStatus = s === "rejected" || s === "not selected";
-        }
+        matchesStatus = normalizeStatus(app.status) === statusFilter;
       }
 
       return matchesSearch && matchesStatus;
@@ -373,10 +367,10 @@ export function ApplicationsTable({
                       })
                     : "—";
 
-                  const normalizedStatus = (app.status || "").toLowerCase();
-                  const isPending = normalizedStatus === "pending" || normalizedStatus === "pending review";
-                  const isViewed = normalizedStatus === "viewed" || normalizedStatus === "reviewing";
-                  const isRejected = normalizedStatus === "rejected" || normalizedStatus === "not selected";
+                  const canonical = normalizeStatus(app.status);
+                  const isPending = canonical === "pending";
+                  const isViewed = canonical === "viewed";
+                  const isRejected = canonical === "rejected";
 
                   return (
                     <tr
