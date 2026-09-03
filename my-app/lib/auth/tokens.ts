@@ -1,10 +1,23 @@
 import jwt from "jsonwebtoken";
 
 const getJwtSecret = (): string => {
-  const secret = process.env.JWT_SECRET;
+  const secret = process.env.JWT_SECRET || process.env.ACCESS_TOKEN_SECRET;
 
   if (!secret) {
-    throw new Error("JWT_SECRET is not defined");
+    throw new Error("JWT_SECRET or ACCESS_TOKEN_SECRET is not defined");
+  }
+
+  return secret;
+};
+
+const getRefreshSecret = (): string => {
+  const secret =
+    process.env.REFRESH_TOKEN_SECRET ||
+    process.env.JWT_SECRET ||
+    process.env.ACCESS_TOKEN_SECRET;
+
+  if (!secret) {
+    throw new Error("REFRESH_TOKEN_SECRET or JWT_SECRET is not defined");
   }
 
   return secret;
@@ -47,7 +60,7 @@ export function createRefreshToken(
     sessionId,
   };
 
-  return jwt.sign(payload, getJwtSecret(), {
+  return jwt.sign(payload, getRefreshSecret(), {
     expiresIn: "7d",
   });
 }
@@ -63,8 +76,8 @@ export function verifyAccessToken(
       return null;
     }
 
-    const userId = decoded.userId;
-    const role = decoded.role;
+    const userId = (decoded as Record<string, unknown>).userId;
+    const role = (decoded as Record<string, unknown>).role;
 
     if (
       typeof userId !== "string" ||
@@ -87,14 +100,14 @@ export function verifyRefreshToken(
   token: string
 ): RefreshTokenPayload {
   try {
-    const decoded = jwt.verify(token, getJwtSecret());
+    const decoded = jwt.verify(token, getRefreshSecret());
 
     if (typeof decoded !== "object" || decoded === null) {
       throw new Error("Invalid refresh token");
     }
 
-    const userId = decoded.userId;
-    const sessionId = decoded.sessionId;
+    const userId = (decoded as Record<string, unknown>).userId;
+    const sessionId = (decoded as Record<string, unknown>).sessionId;
 
     if (
       typeof userId !== "string" ||
