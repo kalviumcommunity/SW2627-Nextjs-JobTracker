@@ -27,25 +27,10 @@ interface FetchJobsResult {
 }
 
 async function fetchEmployerJobsPayload(): Promise<FetchJobsResult> {
-  const authRes = await fetch("/api/applications");
-  if (authRes.status === 401) {
+  const jobsRes = await fetch("/api/jobs?mine=true&limit=100");
+  if (jobsRes.status === 401 || jobsRes.status === 403) {
     return { error: "Please log in as an employer to view your job postings." };
   }
-
-  const authData = await authRes.json().catch(() => ({}));
-  const sampleJobEmployerId = authData.applications?.[0]?.job?.employer?.id;
-
-  if (sampleJobEmployerId) {
-    const response = await fetch(`/api/employer/${sampleJobEmployerId}/jobs`);
-    if (response.ok) {
-      const data = await response.json();
-      return { jobs: data.jobs || [] };
-    }
-  }
-
-  // ponytail: fallback fetches all jobs when employer has no applications yet.
-  // Upgrade path: add an auth-scoped /api/my/jobs endpoint that reads employerId from JWT.
-  const jobsRes = await fetch("/api/jobs?limit=100");
   if (!jobsRes.ok) {
     throw new Error("Failed to load your job postings.");
   }

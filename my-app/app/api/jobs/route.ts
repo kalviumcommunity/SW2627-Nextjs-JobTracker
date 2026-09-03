@@ -33,18 +33,41 @@ export async function GET(request: Request) {
       }
     }
 
+    const mineParam = searchParams.get("mine");
+
     // Build filter conditions
     const whereClause: Record<string, unknown> = {};
 
     if (employerId) {
       whereClause.employerId = employerId;
+    } else if (mineParam === "true") {
+      const auth = await requireRole("employer");
+      if (auth.authorized) {
+        whereClause.employerId = auth.payload.userId;
+      }
     }
 
     if (search) {
-      whereClause.title = {
-        contains: search,
-        mode: "insensitive",
-      };
+      whereClause.OR = [
+        {
+          title: {
+            contains: search,
+            mode: "insensitive",
+          },
+        },
+        {
+          location: {
+            contains: search,
+            mode: "insensitive",
+          },
+        },
+        {
+          description: {
+            contains: search,
+            mode: "insensitive",
+          },
+        },
+      ];
     }
 
     if (location) {
