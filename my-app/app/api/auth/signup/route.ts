@@ -18,6 +18,8 @@ export async function POST(request: Request) {
       );
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
+
     if (role !== "candidate" && role !== "employer") {
       return NextResponse.json(
         { error: "Invalid role" },
@@ -33,11 +35,11 @@ export async function POST(request: Request) {
     }
 
     const existingCandidate = await prisma.candidate.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
     });
 
     const existingEmployer = await prisma.employer.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
     });
 
     if (existingCandidate || existingEmployer) {
@@ -54,8 +56,8 @@ export async function POST(request: Request) {
     if (role === "candidate") {
       const candidate = await prisma.candidate.create({
         data: {
-          name,
-          email,
+          name: name.trim(),
+          email: normalizedEmail,
           passwordHash,
         },
       });
@@ -64,8 +66,8 @@ export async function POST(request: Request) {
     } else {
       const employer = await prisma.employer.create({
         data: {
-          name,
-          email,
+          name: name.trim(),
+          email: normalizedEmail,
           passwordHash,
         },
       });
@@ -100,8 +102,8 @@ export async function POST(request: Request) {
         message: "Signup successful",
         user: {
           id: userId,
-          name,
-          email,
+          name: name.trim(),
+          email: normalizedEmail,
           role,
         },
       },
@@ -125,7 +127,8 @@ export async function POST(request: Request) {
     });
 
     return response;
-  } catch {
+  } catch (err: unknown) {
+    console.error("POST /api/auth/signup error:", err);
     return NextResponse.json(
       { error: "Something went wrong" },
       { status: 500 }
