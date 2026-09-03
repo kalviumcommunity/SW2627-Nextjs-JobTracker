@@ -150,20 +150,6 @@ export async function POST(request: Request) {
       );
     }
 
-    const existingApplication = await prisma.application.findFirst({
-      where: {
-        candidateId,
-        jobId: job.id,
-      },
-    });
-
-    if (existingApplication) {
-      return NextResponse.json(
-        { error: "You have already applied to this job" },
-        { status: 409 }
-      );
-    }
-
     const application = await prisma.application.create({
       data: {
         candidateId,

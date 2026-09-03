@@ -3,96 +3,53 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth/guard";
 
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ employerId: string }> }
 ) {
   try {
+    const auth = await requireRole("employer");
+    if (!auth.authorized) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
+
     const { employerId } = await params;
 
-    if (!employerId) {
-      return NextResponse.json(
-        { error: "Employer ID is required" },
-        { status: 400 }
-      );
-    }
-
-    // Only authenticated employers can access this route
-    const auth = await requireRole("employer");
-
-    if (!auth.authorized) {
-      return NextResponse.json(
-        { error: auth.error },
-        { status: auth.status }
-      );
-    }
-
-    // Employer can only access their own statistics
+    // Verify the authenticated employer owns this data
     if (auth.payload.userId !== employerId) {
-      return NextResponse.json(
-        { error: "You are not authorized to access these statistics" },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Count jobs belonging to this employer
-    const totalJobs = await prisma.job.count({
-      where: {
-        employerId,
-      },
-    });
+    const [totalJobs, statusCounts] = await Promise.all([
+      prisma.job.count({ where: { employerId } }),
+      prisma.application.groupBy({
+        by: ["status"],
+        where: { job: { employerId } },
+        _count: true,
+      }),
+    ]);
 
-    // Count applications belonging to this employer's jobs
-    const totalApplications = await prisma.application.count({
-      where: {
-        job: {
-          employerId,
-        },
-      },
-    });
+    let totalApplications = 0;
+    let pending = 0;
+    let viewed = 0;
+    let rejected = 0;
 
-    // Count applications grouped by status
-    const statusBreakdown = await prisma.application.groupBy({
-      by: ["status"],
-      where: {
-        job: {
-          employerId,
-        },
-      },
-      _count: {
-        _all: true,
-      },
-    });
+    for (const group of statusCounts) {
+      totalApplications += group._count;
+      if (group.status === "pending") pending = group._count;
+      else if (group.status === "viewed") viewed = group._count;
+      else if (group.status === "rejected") rejected = group._count;
+    }
 
-    const pending =
-      statusBreakdown.find(
-        (item) => item.status === "pending"
-      )?._count._all ?? 0;
-
-    const viewed =
-      statusBreakdown.find(
-        (item) => item.status === "viewed"
-      )?._count._all ?? 0;
-
-    const rejected =
-      statusBreakdown.find(
-        (item) => item.status === "rejected"
-      )?._count._all ?? 0;
-
-    return NextResponse.json(
-      {
+    return NextResponse.json({
+      stats: {
         totalJobs,
         totalApplications,
-        statusBreakdown: {
-          pending,
-          viewed,
-          rejected,
-        },
+        statusBreakdown: { pending, viewed, rejected },
       },
-      { status: 200 }
-    );
+    });
   } catch {
     return NextResponse.json(
-      { error: "Failed to fetch employer statistics" },
+      { error: "Failed to fetch employer stats" },
       { status: 500 }
     );
   }

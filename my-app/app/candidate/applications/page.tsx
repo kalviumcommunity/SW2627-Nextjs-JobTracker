@@ -6,6 +6,19 @@ import { AppShell } from "@/components/layout/AppShell";
 import { ApplicationCard, ApplicationData } from "@/components/ui/ApplicationCard";
 import { StatBar } from "@/components/ui/StatBar";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { normalizeStatus } from "@/lib/status";
+
+async function fetchCandidateApplications(): Promise<ApplicationData[]> {
+  const response = await fetch("/api/applications");
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error("Please log in as a candidate to view your applications.");
+    }
+    throw new Error("Failed to load applications.");
+  }
+  const data = await response.json();
+  return data.applications || [];
+}
 
 export default function ApplicationTracker() {
   const [applications, setApplications] = useState<ApplicationData[]>([]);
@@ -15,24 +28,15 @@ export default function ApplicationTracker() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  const fetchApplications = useCallback(async (isManualRefresh = false) => {
+  const refreshApplications = useCallback(async (isManualRefresh = false) => {
     if (isManualRefresh) {
       setIsRefreshing(true);
     }
     setError("");
 
     try {
-      const response = await fetch("/api/applications");
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error("Please log in as a candidate to view your applications.");
-        }
-        throw new Error("Failed to load applications.");
-      }
-
-      const data = await response.json();
-      setApplications(data.applications || []);
+      const apps = await fetchCandidateApplications();
+      setApplications(apps);
     } catch (err: unknown) {
       setError(
         err instanceof Error
@@ -45,36 +49,28 @@ export default function ApplicationTracker() {
     }
   }, []);
 
-  // Initial load
+  // Initial load + auto-polling
   useEffect(() => {
     let ignore = false;
-    async function load() {
-      try {
-        const response = await fetch("/api/applications");
-        if (!response.ok) {
-          if (response.status === 401) {
-            if (!ignore) setError("Please log in as a candidate to view your applications.");
-            return;
+    const load = () => {
+      fetchCandidateApplications()
+        .then((apps) => {
+          if (!ignore) setApplications(apps);
+        })
+        .catch((err) => {
+          if (!ignore) {
+            setError(
+              err instanceof Error ? err.message : "Unable to connect to the server. Please try again."
+            );
           }
-          if (!ignore) setError("Failed to load applications.");
-          return;
-        }
-        const data = await response.json();
-        if (!ignore) setApplications(data.applications || []);
-      } catch {
-        if (!ignore) setError("Unable to connect to the server. Please try again.");
-      } finally {
-        if (!ignore) setIsLoading(false);
-      }
-    }
+        })
+        .finally(() => {
+          if (!ignore) setIsLoading(false);
+        });
+    };
 
     load();
-
-    // Auto-polling every 15 seconds to catch employer status updates
-    const interval = setInterval(() => {
-      load();
-    }, 15000);
-
+    const interval = setInterval(load, 15000);
     return () => {
       ignore = true;
       clearInterval(interval);
@@ -88,14 +84,10 @@ export default function ApplicationTracker() {
     let rejected = 0;
 
     applications.forEach((app) => {
-      const s = (app.status || "").toLowerCase();
-      if (s === "viewed" || s === "reviewing" || s === "interviewed") {
-        viewed++;
-      } else if (s === "rejected" || s === "not selected") {
-        rejected++;
-      } else {
-        pending++;
-      }
+      const s = normalizeStatus(app.status);
+      if (s === "viewed") viewed++;
+      else if (s === "rejected") rejected++;
+      else pending++;
     });
 
     return { pendingCount: pending, viewedCount: viewed, rejectedCount: rejected };
@@ -115,14 +107,7 @@ export default function ApplicationTracker() {
 
       let matchesStatus = true;
       if (statusFilter !== "all") {
-        const s = (app.status || "").toLowerCase();
-        if (statusFilter === "pending") {
-          matchesStatus = s === "pending" || s === "pending review";
-        } else if (statusFilter === "viewed") {
-          matchesStatus = s === "viewed" || s === "reviewing" || s === "interviewed";
-        } else if (statusFilter === "rejected") {
-          matchesStatus = s === "rejected" || s === "not selected";
-        }
+        matchesStatus = normalizeStatus(app.status) === statusFilter;
       }
 
       return matchesSearch && matchesStatus;
@@ -154,7 +139,7 @@ export default function ApplicationTracker() {
             <div className="flex items-center gap-2 self-end sm:self-auto">
               <button
                 type="button"
-                onClick={() => fetchApplications(true)}
+                onClick={() => refreshApplications(true)}
                 disabled={isRefreshing}
                 className="px-3 py-1.5 rounded-lg border border-[#c7c4d8] bg-white text-xs font-medium text-[#121c28] hover:bg-[#f8f9ff] hover:border-[#777587] transition-all flex items-center gap-1.5 shadow-2xs disabled:opacity-60"
               >
@@ -236,7 +221,7 @@ export default function ApplicationTracker() {
               <span className="text-sm font-medium">{error}</span>
             </div>
             <button
-              onClick={() => fetchApplications(false)}
+              onClick={() => refreshApplications(false)}
               className="px-3 py-1 bg-[#ba1a1a] text-white text-xs font-semibold rounded-lg hover:bg-[#93000a] transition-colors"
             >
               Retry

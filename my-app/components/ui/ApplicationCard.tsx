@@ -34,7 +34,7 @@ export function ApplicationCard({ application }: ApplicationCardProps) {
   // Initials for company avatar
   const initial = companyName.charAt(0).toUpperCase() || "A";
 
-  const isRejected = application.status.toLowerCase() === "rejected";
+  const isRejected = (application.status || "").toLowerCase() === "rejected";
 
   return (
     <div

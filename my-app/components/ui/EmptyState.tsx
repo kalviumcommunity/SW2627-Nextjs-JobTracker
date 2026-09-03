@@ -1,3 +1,4 @@
+import Link from "next/link";
 import React from "react";
 
 export interface EmptyStateProps {
@@ -31,12 +32,12 @@ export function EmptyState({
       {actionLabel && (
         <>
           {actionHref ? (
-            <a
+            <Link
               href={actionHref}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#3525cd] text-white text-xs sm:text-sm font-medium hover:bg-[#4f46e5] transition-colors shadow-xs"
             >
               {actionLabel}
-            </a>
+            </Link>
           ) : (
             <button
               type="button"

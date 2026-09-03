@@ -7,6 +7,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { ApplicationData } from "@/components/ui/ApplicationCard";
 import { JobData } from "@/components/ui/JobCard";
+import { normalizeStatus } from "@/lib/status";
 
 export default function CandidateDashboard() {
   const [applications, setApplications] = useState<ApplicationData[]>([]);
@@ -45,13 +46,12 @@ export default function CandidateDashboard() {
   }, []);
 
   const pendingCount = applications.filter(
-    (a) => (a.status || "").toLowerCase() === "pending"
+    (a) => normalizeStatus(a.status) === "pending"
   ).length;
 
-  const viewedCount = applications.filter((a) => {
-    const s = (a.status || "").toLowerCase();
-    return s === "viewed" || s === "reviewing";
-  }).length;
+  const viewedCount = applications.filter(
+    (a) => normalizeStatus(a.status) === "viewed"
+  ).length;
 
   return (
     <AppShell role="candidate">

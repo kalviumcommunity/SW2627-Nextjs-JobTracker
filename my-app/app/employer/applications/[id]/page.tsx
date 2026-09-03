@@ -7,6 +7,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 import { EmployerApplication } from "@/components/employer/ApplicationsTable";
+import { normalizeStatus } from "@/lib/status";
 
 export default function ApplicantDetails({
   params,
@@ -79,10 +80,10 @@ export default function ApplicantDetails({
     }
   }
 
-  const normalizedStatus = (application?.status || "").toLowerCase();
-  const isPending = normalizedStatus === "pending" || normalizedStatus === "pending review";
-  const isViewed = normalizedStatus === "viewed" || normalizedStatus === "reviewing";
-  const isRejected = normalizedStatus === "rejected" || normalizedStatus === "not selected";
+  const canonical = normalizeStatus(application?.status);
+  const isPending = canonical === "pending";
+  const isViewed = canonical === "viewed";
+  const isRejected = canonical === "rejected";
 
   return (
     <AppShell role="employer">

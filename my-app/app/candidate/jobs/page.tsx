@@ -9,6 +9,32 @@ import { Alert } from "@/components/ui/Alert";
 
 const JOBS_PER_PAGE = 6;
 
+async function fetchJobsPayload(): Promise<{ jobs: JobData[]; appliedJobIds: Set<string> }> {
+  const jobsRes = await fetch("/api/jobs?limit=100");
+  if (!jobsRes.ok) {
+    throw new Error("Failed to load job listings.");
+  }
+  const jobsData = await jobsRes.json();
+
+  let appliedIds = new Set<string>();
+  try {
+    const appsRes = await fetch("/api/applications");
+    if (appsRes.ok) {
+      const appsData = await appsRes.json();
+      appliedIds = new Set<string>(
+        (appsData.applications || []).map((app: { jobId: string }) => app.jobId)
+      );
+    }
+  } catch {
+    // Silently continue if user is not logged in as candidate
+  }
+
+  return {
+    jobs: jobsData.jobs || [],
+    appliedJobIds: appliedIds,
+  };
+}
+
 export default function CandidateJobs() {
   const [jobs, setJobs] = useState<JobData[]>([]);
   const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(new Set());
@@ -29,27 +55,9 @@ export default function CandidateJobs() {
     setError("");
 
     try {
-      // 1. Fetch all jobs
-      const jobsRes = await fetch("/api/jobs");
-      if (!jobsRes.ok) {
-        throw new Error("Failed to load job listings.");
-      }
-      const jobsData = await jobsRes.json();
-      setJobs(jobsData.jobs || []);
-
-      // 2. Fetch candidate's applications if logged in
-      try {
-        const appsRes = await fetch("/api/applications");
-        if (appsRes.ok) {
-          const appsData = await appsRes.json();
-          const ids = new Set<string>(
-            (appsData.applications || []).map((app: { jobId: string }) => app.jobId)
-          );
-          setAppliedJobIds(ids);
-        }
-      } catch {
-        // Silently continue if user is not logged in as candidate
-      }
+      const data = await fetchJobsPayload();
+      setJobs(data.jobs);
+      setAppliedJobIds(data.appliedJobIds);
     } catch (err: unknown) {
       setError(
         err instanceof Error
@@ -63,32 +71,26 @@ export default function CandidateJobs() {
 
   useEffect(() => {
     let ignore = false;
-    async function loadInitial() {
-      try {
-        const jobsRes = await fetch("/api/jobs");
-        if (jobsRes.ok) {
-          const jobsData = await jobsRes.json();
-          if (!ignore) setJobs(jobsData.jobs || []);
-        } else {
-          if (!ignore) setError("Failed to load job listings.");
+    fetchJobsPayload()
+      .then((data) => {
+        if (!ignore) {
+          setJobs(data.jobs);
+          setAppliedJobIds(data.appliedJobIds);
         }
-
-        const appsRes = await fetch("/api/applications");
-        if (appsRes.ok) {
-          const appsData = await appsRes.json();
-          const ids = new Set<string>(
-            (appsData.applications || []).map((app: { jobId: string }) => app.jobId)
+      })
+      .catch((err: unknown) => {
+        if (!ignore) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Unable to connect to the server. Please try again."
           );
-          if (!ignore) setAppliedJobIds(ids);
         }
-      } catch {
-        if (!ignore) setError("Unable to connect to the server. Please try again.");
-      } finally {
+      })
+      .finally(() => {
         if (!ignore) setIsLoading(false);
-      }
-    }
+      });
 
-    loadInitial();
     return () => {
       ignore = true;
     };

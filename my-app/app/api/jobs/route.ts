@@ -72,7 +72,6 @@ export async function GET(request: Request) {
             select: {
               id: true,
               name: true,
-              email: true,
             },
           },
           _count: {
@@ -193,13 +192,9 @@ export async function POST(request: Request) {
       },
       { status: 201 }
     );
-  } catch (err: unknown) {
-    console.error("POST /api/jobs error:", err);
+  } catch {
     return NextResponse.json(
-      {
-        error: "Failed to create job",
-        details: err instanceof Error ? err.message : String(err),
-      },
+      { error: "Failed to create job" },
       { status: 500 }
     );
   }

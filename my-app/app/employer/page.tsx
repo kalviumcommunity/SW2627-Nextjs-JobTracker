@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { ApplicationsTable, EmployerApplication } from "@/components/employer/ApplicationsTable";
+import { normalizeStatus } from "@/lib/status";
 
 interface JobItem {
   id: string;
@@ -40,7 +41,7 @@ interface DashboardPayload {
 async function fetchDashboardPayload(): Promise<DashboardPayload> {
   const [appsRes, jobsRes] = await Promise.all([
     fetch("/api/applications"),
-    fetch("/api/jobs"),
+    fetch("/api/jobs?limit=100"),
   ]);
 
   if (appsRes.status === 401 || jobsRes.status === 401) {
@@ -160,9 +161,9 @@ export default function EmployerDashboard() {
     let rejected = 0;
 
     for (const app of applications) {
-      const s = (app.status || "").toLowerCase();
-      if (s === "viewed" || s === "reviewing" || s === "interviewed") viewed++;
-      else if (s === "rejected" || s === "not selected") rejected++;
+      const s = normalizeStatus(app.status);
+      if (s === "viewed") viewed++;
+      else if (s === "rejected") rejected++;
       else pending++;
     }
 
