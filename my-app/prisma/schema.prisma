@@ -11,6 +11,11 @@ model Candidate {
   name         String
   email        String        @unique
   passwordHash String
+  headline     String?
+  skills       String?
+  bio          String?
+  phone        String?
+  location     String?
   applications Application[]
   sessions     Session[]
   createdAt    DateTime      @default(now())
