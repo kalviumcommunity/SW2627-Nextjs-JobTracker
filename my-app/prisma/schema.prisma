@@ -26,6 +26,10 @@ model Employer {
   name         String
   email        String    @unique
   passwordHash String
+  companyName  String?
+  website      String?
+  bio          String?
+  location     String?
   jobs         Job[]
   sessions     Session[]
   createdAt    DateTime  @default(now())
@@ -60,14 +64,16 @@ model Job {
 }
 
 model Application {
-  id          String    @id @default(cuid())
-  status      String    @default("pending")
-  candidateId String
-  candidate   Candidate @relation(fields: [candidateId], references: [id])
-  jobId       String
-  job         Job       @relation(fields: [jobId], references: [id])
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id             String    @id @default(cuid())
+  status         String    @default("pending")
+  coverLetter    String?
+  resumeFileName String?
+  candidateId    String
+  candidate      Candidate @relation(fields: [candidateId], references: [id])
+  jobId          String
+  job            Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@unique([candidateId, jobId])
   @@index([jobId])

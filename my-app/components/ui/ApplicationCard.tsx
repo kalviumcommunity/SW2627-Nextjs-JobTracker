@@ -7,6 +7,8 @@ export interface ApplicationData {
   status: "pending" | "viewed" | "rejected" | string;
   candidateId?: string;
   jobId: string;
+  coverLetter?: string | null;
+  resumeFileName?: string | null;
   createdAt: string | Date;
   updatedAt?: string | Date;
   job?: {
