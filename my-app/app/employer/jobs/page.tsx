@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Alert } from "@/components/ui/Alert";
+import { Button } from "@/components/ui/Button";
 
 interface EmployerJobItem {
   id: string;
@@ -42,6 +43,9 @@ export default function ManageJobs() {
   const [jobs, setJobs] = useState<EmployerJobItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [jobToDelete, setJobToDelete] = useState<EmployerJobItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     let ignore = false;
@@ -91,6 +95,42 @@ export default function ManageJobs() {
     }
   };
 
+  const handleDeleteJob = async () => {
+    if (!jobToDelete) return;
+    setIsDeleting(true);
+    setFeedback(null);
+
+    try {
+      const response = await fetch(`/api/jobs/${jobToDelete.id}`, {
+        method: "DELETE",
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setFeedback({
+          type: "error",
+          message: data.error || "Failed to delete job posting.",
+        });
+        return;
+      }
+
+      setJobs((prev) => prev.filter((j) => j.id !== jobToDelete.id));
+      setFeedback({
+        type: "success",
+        message: `Job "${jobToDelete.title}" was closed and deleted successfully.`,
+      });
+      setJobToDelete(null);
+    } catch {
+      setFeedback({
+        type: "error",
+        message: "Network error while deleting job posting.",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <AppShell role="employer">
       <div className="space-y-6 max-w-7xl mx-auto">
@@ -101,7 +141,7 @@ export default function ManageJobs() {
               Manage Job Postings
             </h1>
             <p className="text-xs sm:text-sm text-[#464555] mt-0.5">
-              Review your active job openings and track applicant volume.
+              Review your active job openings, applicant volumes, and manage listing lifecycles.
             </p>
           </div>
 
@@ -109,7 +149,7 @@ export default function ManageJobs() {
             <button
               type="button"
               onClick={handleRefresh}
-              className="p-2 border border-[#c7c4d8] rounded-lg bg-white hover:bg-[#f8f9ff] text-[#464555] hover:text-[#121c28] transition-colors"
+              className="p-2 border border-[#c7c4d8] rounded-lg bg-white hover:bg-[#f8f9ff] text-[#464555] hover:text-[#121c28] transition-colors shadow-2xs"
               title="Refresh job postings"
             >
               <span className="material-symbols-outlined text-[18px]">sync</span>
@@ -124,6 +164,14 @@ export default function ManageJobs() {
             </Link>
           </div>
         </div>
+
+        {feedback && (
+          <Alert
+            type={feedback.type}
+            message={feedback.message}
+            onClose={() => setFeedback(null)}
+          />
+        )}
 
         {error && <Alert type="error" message={error} onClose={() => setError("")} />}
 
@@ -184,7 +232,7 @@ export default function ManageJobs() {
                     {job.employer?.name || "Your Company"} • {job.location || "Remote / Hybrid"}
                   </p>
 
-                  <div className="mt-auto pt-3 border-t border-[#c7c4d8]/40 flex justify-between items-center">
+                  <div className="mt-auto pt-3 border-t border-[#c7c4d8]/40 flex justify-between items-center gap-2">
                     <div className="flex items-center gap-1.5 text-xs text-[#464555]">
                       <span className="material-symbols-outlined text-[16px] text-[#3525cd]">
                         group
@@ -192,16 +240,69 @@ export default function ManageJobs() {
                       <span className="font-semibold text-[#121c28]">{appCount}</span> applicant(s)
                     </div>
 
-                    <Link
-                      href={`/employer/jobs/${job.id}/applications`}
-                      className="px-3 py-1.5 rounded-lg bg-[#3525cd] text-white text-xs font-semibold hover:bg-[#4f46e5] transition-colors"
-                    >
-                      View Applicants
-                    </Link>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setJobToDelete(job)}
+                        className="p-1.5 text-[#777587] hover:text-[#ba1a1a] hover:bg-[#ffdad6]/30 rounded-lg transition-colors"
+                        title="Delete / Close Listing"
+                        aria-label={`Delete ${job.title}`}
+                      >
+                        <span className="material-symbols-outlined text-[18px]">delete</span>
+                      </button>
+
+                      <Link
+                        href={`/employer/jobs/${job.id}/applications`}
+                        className="px-3 py-1.5 rounded-lg bg-[#3525cd] text-white text-xs font-semibold hover:bg-[#4f46e5] transition-colors"
+                      >
+                        Applicants
+                      </Link>
+                    </div>
                   </div>
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {jobToDelete && (
+          <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white border border-[#c7c4d8] rounded-xl p-6 max-w-md w-full shadow-lg space-y-4 animate-fade-in">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-[#ffdad6] text-[#ba1a1a] flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-[22px]">warning</span>
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-[#121c28]">Close Job Listing?</h3>
+                  <p className="text-xs text-[#464555]">This action cannot be undone.</p>
+                </div>
+              </div>
+
+              <p className="text-xs sm:text-sm text-[#464555] leading-relaxed">
+                Are you sure you want to delete and close <strong className="text-[#121c28]">&ldquo;{jobToDelete.title}&rdquo;</strong>? All associated applicant submissions for this listing will also be removed.
+              </p>
+
+              <div className="pt-2 flex justify-end gap-2 border-t border-[#c7c4d8]/40">
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={() => setJobToDelete(null)}
+                  className="px-4 py-2 text-xs font-medium text-[#464555] hover:text-[#121c28] rounded-lg hover:bg-[#f1f5f9] transition-colors"
+                >
+                  Cancel
+                </button>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  isLoading={isDeleting}
+                  onClick={handleDeleteJob}
+                  icon="delete"
+                >
+                  Delete Listing
+                </Button>
+              </div>
+            </div>
           </div>
         )}
       </div>

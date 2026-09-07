@@ -46,7 +46,11 @@ export default function ApplyToJob({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ jobId }),
+        body: JSON.stringify({
+          jobId,
+          coverLetter: coverLetter.trim(),
+          resumeFileName: resume.name,
+        }),
       });
 
       const data = await response.json();

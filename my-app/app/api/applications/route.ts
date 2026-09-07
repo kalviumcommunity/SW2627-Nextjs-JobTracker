@@ -117,7 +117,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { jobId } = body;
+    const { jobId, coverLetter, resumeFileName } = body;
 
     if (!jobId || typeof jobId !== "string" || jobId.trim().length === 0) {
       return NextResponse.json(
@@ -127,6 +127,14 @@ export async function POST(request: Request) {
     }
 
     const sanitizedJobId = jobId.trim();
+    const sanitizedCoverLetter =
+      typeof coverLetter === "string" && coverLetter.trim().length > 0
+        ? coverLetter.trim()
+        : null;
+    const sanitizedResumeFileName =
+      typeof resumeFileName === "string" && resumeFileName.trim().length > 0
+        ? resumeFileName.trim()
+        : null;
 
     const candidate = await prisma.candidate.findUnique({
       where: { id: candidateId },
@@ -155,6 +163,8 @@ export async function POST(request: Request) {
         candidateId,
         jobId: job.id,
         status: "pending",
+        coverLetter: sanitizedCoverLetter,
+        resumeFileName: sanitizedResumeFileName,
       },
       include: {
         job: {

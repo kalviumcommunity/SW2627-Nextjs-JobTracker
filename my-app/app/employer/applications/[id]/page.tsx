@@ -113,7 +113,7 @@ export default function ApplicantDetails({
           <div className="bg-white border border-[#c7c4d8] rounded-xl p-8 text-center">
             <h2 className="text-lg font-bold text-[#121c28]">Applicant Not Found</h2>
             <p className="text-xs text-[#464555] mt-1 mb-4">
-              This application record may have been removed.
+              This application record may have been removed or you are not authorized to view it.
             </p>
             <Link
               href="/employer"
@@ -127,7 +127,7 @@ export default function ApplicantDetails({
             {/* Header Profile */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-[#c7c4d8]/50">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-[#dfe9fa] text-[#3525cd] flex items-center justify-center font-bold text-xl shadow-xs">
+                <div className="w-14 h-14 rounded-full bg-[#dfe9fa] text-[#3525cd] flex items-center justify-center font-bold text-xl shadow-xs shrink-0">
                   {(application.candidate?.name || "C").charAt(0).toUpperCase()}
                 </div>
                 <div>
@@ -196,11 +196,65 @@ export default function ApplicantDetails({
               </div>
             </div>
 
-            {/* Candidate Resume & Cover Letter Section */}
-            <div className="space-y-4">
-              <h2 className="text-base font-bold text-[#121c28]">Application Overview</h2>
-              <div className="bg-white p-4 rounded-lg border border-[#c7c4d8] space-y-3">
-                <div className="flex items-center justify-between text-xs">
+            {/* Attached Resume Document */}
+            <div className="space-y-3">
+              <h2 className="text-base font-bold text-[#121c28] flex items-center gap-2">
+                <span className="material-symbols-outlined text-[20px] text-[#3525cd]">
+                  attach_file
+                </span>
+                Attached Resume
+              </h2>
+              {application.resumeFileName ? (
+                <div className="p-4 rounded-xl border border-[#c7c4d8] bg-[#f8f9ff]/70 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-[#e5eeff] text-[#3525cd] flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-[22px]">description</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-[#121c28]">
+                        {application.resumeFileName}
+                      </p>
+                      <p className="text-xs text-[#777587]">Verified Attachment • PDF/DOCX</p>
+                    </div>
+                  </div>
+                  <span className="px-3 py-1 bg-white border border-[#c7c4d8] text-[#121c28] text-xs font-medium rounded-lg shadow-2xs inline-flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[16px] text-[#065f46]">check_circle</span>
+                    Attached
+                  </span>
+                </div>
+              ) : (
+                <div className="p-4 rounded-xl border border-dashed border-[#c7c4d8] bg-white text-center">
+                  <p className="text-xs text-[#777587]">No resume file attached with this submission.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Candidate Cover Letter Section */}
+            <div className="space-y-3">
+              <h2 className="text-base font-bold text-[#121c28] flex items-center gap-2">
+                <span className="material-symbols-outlined text-[20px] text-[#3525cd]">
+                  mail
+                </span>
+                Cover Letter / Introduction
+              </h2>
+              <div className="bg-[#f8f9ff]/40 p-5 rounded-xl border border-[#c7c4d8]">
+                {application.coverLetter ? (
+                  <p className="text-sm text-[#121c28] leading-relaxed whitespace-pre-wrap font-sans">
+                    {application.coverLetter}
+                  </p>
+                ) : (
+                  <p className="text-xs text-[#777587] italic">
+                    Candidate did not provide a cover letter.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Submission Metadata */}
+            <div className="space-y-3">
+              <h2 className="text-base font-bold text-[#121c28]">Application Metadata</h2>
+              <div className="bg-white p-4 rounded-lg border border-[#c7c4d8] space-y-2.5 text-xs">
+                <div className="flex items-center justify-between">
                   <span className="text-[#464555]">Applied Date:</span>
                   <span className="font-semibold text-[#121c28]">
                     {application.createdAt
@@ -211,7 +265,11 @@ export default function ApplicantDetails({
                       : "—"}
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-[#464555]">Candidate ID:</span>
+                  <span className="font-mono text-[#777587]">{application.candidateId}</span>
+                </div>
+                <div className="flex items-center justify-between">
                   <span className="text-[#464555]">Job ID:</span>
                   <span className="font-mono text-[#777587]">{application.jobId}</span>
                 </div>
