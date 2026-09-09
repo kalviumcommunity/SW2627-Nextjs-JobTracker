@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { FEEDBACK_FORM_URL } from "@/lib/constants";
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -61,6 +62,16 @@ export default function Navbar() {
 
         {/* Quick Action Buttons */}
         <div className="flex items-center gap-2">
+          <a
+            href={FEEDBACK_FORM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#e5eeff] text-[#3525cd] text-xs font-semibold hover:bg-[#d9dff5] border border-[#3525cd]/20 transition-colors"
+          >
+            <span className="material-symbols-outlined text-[15px]">rate_review</span>
+            <span>Feedback</span>
+            <span className="material-symbols-outlined text-[12px]">open_in_new</span>
+          </a>
           <Link
             href="/login"
             className="px-3 py-1.5 rounded-lg border border-[#c7c4d8] bg-white text-xs font-medium text-[#121c28] hover:bg-[#f8f9ff] hover:border-[#777587] transition-colors"
