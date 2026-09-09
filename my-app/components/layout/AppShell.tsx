@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { FEEDBACK_FORM_URL } from "@/lib/constants";
 
 export interface AppShellProps {
   role?: "candidate" | "employer";
@@ -108,6 +109,17 @@ export function AppShell({ role = "candidate", children }: AppShellProps) {
 
         {/* Footer Navigation */}
         <div className="mt-auto border-t border-[#c7c4d8] pt-3 space-y-1">
+          <a
+            href={FEEDBACK_FORM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-[#3525cd] bg-[#e5eeff] hover:bg-[#d9dff5] border border-[#3525cd]/20 transition-all mb-1"
+          >
+            <span className="material-symbols-outlined text-[18px]">rate_review</span>
+            <span>Feedback Form</span>
+            <span className="material-symbols-outlined text-[13px] ml-auto text-[#3525cd]/70">open_in_new</span>
+          </a>
+
           <Link
             href="/role-selection"
             className="flex items-center gap-3 px-3.5 py-2 rounded-lg text-xs font-medium text-[#464555] hover:bg-[#dfe9fa] hover:text-[#121c28] transition-colors"
@@ -154,6 +166,15 @@ export function AppShell({ role = "candidate", children }: AppShellProps) {
             </div>
 
             <div className="flex items-center gap-2">
+              <a
+                href={FEEDBACK_FORM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-1.5 rounded-lg text-[#3525cd] hover:bg-[#e5eeff]"
+                title="Give Feedback"
+              >
+                <span className="material-symbols-outlined text-[20px]">rate_review</span>
+              </a>
               <span className="text-xs font-semibold px-2 py-0.5 rounded bg-[#e5eeff] text-[#3525cd] capitalize">
                 {role}
               </span>
@@ -171,6 +192,17 @@ export function AppShell({ role = "candidate", children }: AppShellProps) {
           {/* Mobile Dropdown Menu */}
           {mobileMenuOpen && (
             <div className="p-3 bg-[#f8f9ff] border-t border-[#c7c4d8] space-y-1">
+              <a
+                href={FEEDBACK_FORM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold text-[#3525cd] bg-[#e5eeff] hover:bg-[#d9dff5] transition-colors"
+              >
+                <span className="material-symbols-outlined text-[18px]">rate_review</span>
+                <span>Give Feedback (Google Form)</span>
+                <span className="material-symbols-outlined text-[13px] ml-auto">open_in_new</span>
+              </a>
               {navItems.map((item) => {
                 const isActive = pathname === item.href;
                 return (
@@ -219,6 +251,22 @@ export function AppShell({ role = "candidate", children }: AppShellProps) {
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
           {children}
         </main>
+
+        {/* Portal Footer */}
+        <footer className="w-full border-t border-[#c7c4d8]/60 bg-[#f8f9ff]/50 py-3 px-4 sm:px-8 mt-auto">
+          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-[#777587]">
+            <span>Apna Tracker • Deployed Preview</span>
+            <a
+              href={FEEDBACK_FORM_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#3525cd] font-semibold hover:underline inline-flex items-center gap-1"
+            >
+              <span>Feedback & Bug Report Form</span>
+              <span className="material-symbols-outlined text-[13px]">open_in_new</span>
+            </a>
+          </div>
+        </footer>
       </div>
     </div>
   );
