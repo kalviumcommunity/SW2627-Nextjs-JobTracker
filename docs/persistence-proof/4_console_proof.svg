@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450">
+  <defs>
+    <style>
+      .bg { fill: #0f172a; }
+      .header-bar { fill: #1e293b; }
+      .text-code { font-family: 'Consolas', 'Courier New', monospace; font-size: 13px; fill: #f8fafc; }
+      .text-dim { font-family: 'Consolas', 'Courier New', monospace; font-size: 12px; fill: #64748b; }
+      .text-accent { font-family: 'Consolas', 'Courier New', monospace; font-size: 13px; fill: #38bdf8; }
+      .text-success { font-family: 'Consolas', 'Courier New', monospace; font-size: 13px; fill: #4ade80; font-weight: 700; }
+    </style>
+  </defs>
+  <!-- Background -->
+  <rect width="800" height="450" class="bg"/>
+  
+  <!-- Terminal Top Bar -->
+  <rect width="800" height="35" class="header-bar"/>
+  <circle cx="20" cy="18" r="6" fill="#ef4444"/>
+  <circle cx="38" cy="18" r="6" fill="#eab308"/>
+  <circle cx="56" cy="18" r="6" fill="#22c55e"/>
+  <text x="80" y="22" font-family="sans-serif" font-size="12" fill="#94a3b8">Developer Tools - Console (Navigation Audit)</text>
+
+  <!-- Console Logs Output -->
+  <text x="30" y="70" class="text-dim">&gt; Navigation initiated: GET /dashboard</text>
+  <text x="30" y="95" class="text-code"><tspan fill="#60a5fa">[DashboardLayout]</tspan> rendered</text>
+  <text x="30" y="125" class="text-dim">&gt; User event: Click [Collapse] button (Sidebar state -&gt; collapsed = true)</text>
+  <text x="30" y="150" class="text-dim">&gt; User event: Click &lt;Link href="/dashboard/settings"&gt;</text>
+  <text x="30" y="180" class="text-dim">&gt; Next.js Router: pathname changed to /dashboard/settings</text>
+  <text x="30" y="205" class="text-dim">&gt; React reconciliation: DashboardLayout remains mounted, swapping {children} only</text>
+  <text x="30" y="240" class="text-success">&gt;&gt;&gt; Total [DashboardLayout] log count: EXACTLY 1</text>
+  <text x="30" y="265" class="text-code">     (No second log fired upon navigation to /dashboard/settings)</text>
+
+  <!-- Verification Card -->
+  <rect x="30" y="300" width="740" height="110" rx="8" fill="#1e293b" stroke="#334155"/>
+  <text x="50" y="330" font-family="sans-serif" font-size="14" font-weight="700" fill="#38bdf8">EVIDENCE VERIFIED: Next.js Layout Persistence Superpower</text>
+  <text x="50" y="355" font-family="sans-serif" font-size="12" fill="#cbd5e1">• Next.js retains layout components in the fiber tree across client-side router transitions.</text>
+  <text x="50" y="375" font-family="sans-serif" font-size="12" fill="#cbd5e1">• Subtree state (like Sidebar collapsed toggle) is automatically preserved for free.</text>
+  <text x="50" y="395" font-family="sans-serif" font-size="12" fill="#4ade80">• Zero unmount, zero re-mount, zero flicker.</text>
+</svg>

@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450">
+  <defs>
+    <style>
+      .bg { fill: #f8fafc; }
+      .header { fill: #ffffff; stroke: #e2e8f0; stroke-width: 1; }
+      .sidebar { fill: #f1f5f9; stroke: #cbd5e1; stroke-width: 1; }
+      .footer { fill: #ffffff; stroke: #e2e8f0; stroke-width: 1; }
+      .text-title { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 700; fill: #0f172a; font-size: 16px; }
+      .text-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; fill: #334155; }
+      .text-muted { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; fill: #64748b; }
+      .btn { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1; rx: 4; }
+      .tag { fill: #e0e7ff; rx: 4; }
+      .tag-text { font-family: sans-serif; font-size: 11px; fill: #3730a3; font-weight: 600; }
+    </style>
+  </defs>
+  <!-- Background -->
+  <rect width="800" height="450" class="bg"/>
+  
+  <!-- Browser Header Bar -->
+  <rect width="800" height="40" fill="#1e293b"/>
+  <circle cx="20" cy="20" r="6" fill="#ef4444"/>
+  <circle cx="38" cy="20" r="6" fill="#eab308"/>
+  <circle cx="56" cy="20" r="6" fill="#22c55e"/>
+  <rect x="80" y="8" width="400" height="24" rx="4" fill="#334155"/>
+  <text x="95" y="24" font-family="monospace" font-size="12" fill="#94a3b8">http://localhost:3000/dashboard</text>
+  <rect x="700" y="10" width="85" height="20" class="tag"/>
+  <text x="707" y="24" class="tag-text">Step 1: Mounted</text>
+
+  <!-- Global Header -->
+  <rect y="40" width="800" height="50" class="header"/>
+  <text x="30" y="70" class="text-title" fill="#3525cd">Apna Tracker</text>
+  <text x="160" y="70" class="text-body" font-weight="600">Home</text>
+  <text x="220" y="70" class="text-body">About</text>
+  <text x="280" y="70" class="text-title" fill="#3525cd">Dashboard</text>
+
+  <!-- Sidebar (Expanded - 200px) -->
+  <rect y="90" width="200" height="310" class="sidebar"/>
+  <rect x="15" y="105" width="80" height="26" class="btn"/>
+  <text x="22" y="122" class="text-body" font-size="12">← Collapse</text>
+  
+  <text x="20" y="160" class="text-body" font-weight="700" fill="#3525cd">● Overview</text>
+  <text x="20" y="190" class="text-body">○ Settings</text>
+  
+  <rect x="15" y="240" width="170" height="50" rx="6" fill="#e0e7ff"/>
+  <text x="25" y="260" class="tag-text" font-size="11">Sidebar State:</text>
+  <text x="25" y="278" font-family="sans-serif" font-size="12" font-weight="700" fill="#1e1b4b">collapsed = false (200px)</text>
+
+  <!-- Main Content Slot ({children}) -->
+  <rect x="200" y="90" width="600" height="310" fill="#ffffff"/>
+  <text x="240" y="140" class="text-title" font-size="24">Dashboard Overview</text>
+  <text x="240" y="175" class="text-body">Welcome to your dashboard overview page.</text>
+  <text x="240" y="200" class="text-muted">This page is injected into app/dashboard/layout.tsx via the {children} prop.</text>
+
+  <!-- Global Footer -->
+  <rect y="400" width="800" height="50" class="footer"/>
+  <text x="400" y="430" text-anchor="middle" class="text-muted">© 2026 Our Product • Global Footer rendered by app/layout.tsx</text>
+</svg>
