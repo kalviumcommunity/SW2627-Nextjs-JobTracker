@@ -1,10 +1,12 @@
-export default function HomePage() {
+export default function PricingPage() {
   return (
     <main style={{ padding: "2rem", maxWidth: "800px", margin: "0 auto" }}>
       <h1 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "1rem" }}>
-        Welcome to Our Product
+        Pricing
       </h1>
-      <p style={{ color: "#4b5563" }}>Marketing site coming soon.</p>
+      <p style={{ color: "#4b5563" }}>
+        Transparent and flexible pricing plans designed for teams of all sizes.
+      </p>
     </main>
   );
 }
