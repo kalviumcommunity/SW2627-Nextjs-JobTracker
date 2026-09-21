@@ -11,6 +11,7 @@ export interface JobData {
     id: string;
     name: string;
     email?: string;
+    companyName?: string | null;
   };
   _count?: {
     applications: number;
@@ -36,7 +37,7 @@ export function JobCard({
   isApplying = false,
   onApply,
 }: JobCardProps) {
-  const companyName = job.employer?.name || "Verified Employer";
+  const companyName = job.employer?.companyName || job.employer?.name || "Verified Employer";
 
   // Derive initial for avatar
   const initial = companyName.charAt(0).toUpperCase() || "J";

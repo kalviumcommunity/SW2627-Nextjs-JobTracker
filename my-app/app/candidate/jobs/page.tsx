@@ -147,7 +147,11 @@ export default function CandidateJobs() {
   const filteredJobs = useMemo(() => {
     return jobs.filter((job) => {
       const titleLower = job.title.toLowerCase();
-      const employerLower = (job.employer?.name || "").toLowerCase();
+      const employerLower = (
+        job.employer?.companyName ||
+        job.employer?.name ||
+        ""
+      ).toLowerCase();
       const locationLower = (job.location || "").toLowerCase();
       const queryLower = searchTerm.toLowerCase().trim();
 

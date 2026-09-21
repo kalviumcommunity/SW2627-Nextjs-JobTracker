@@ -27,7 +27,12 @@ export default function JobDetails({
     async function loadJob() {
       setIsLoading(true);
       try {
-        const res = await fetch(`/api/jobs/${jobId}`);
+        // ponytail: Parallelize job info and specific job application check
+        const [res, appRes] = await Promise.all([
+          fetch(`/api/jobs/${jobId}`),
+          fetch(`/api/applications?jobId=${jobId}`),
+        ]);
+
         if (res.ok) {
           const data = await res.json();
           if (!ignore) setJob(data.job || null);
@@ -35,14 +40,9 @@ export default function JobDetails({
           if (!ignore) setJob(null);
         }
 
-        // Check if already applied
-        const appRes = await fetch("/api/applications");
         if (appRes.ok) {
           const appData = await appRes.json();
-          const hasApplied = (appData.applications || []).some(
-            (app: { jobId: string }) => app.jobId === jobId
-          );
-          if (!ignore) setIsApplied(hasApplied);
+          if (!ignore) setIsApplied((appData.applications || []).length > 0);
         }
       } catch {
         // Handle error silently
@@ -139,7 +139,7 @@ export default function JobDetails({
                 </h1>
                 <p className="text-sm text-[#464555] mt-1 flex items-center gap-2">
                   <span className="font-semibold text-[#121c28]">
-                    {job.employer?.name || "Hiring Company"}
+                    {job.employer?.companyName || job.employer?.name || "Hiring Company"}
                   </span>
                   <span>•</span>
                   <span>{job.location || "Remote / Hybrid"}</span>
@@ -176,7 +176,7 @@ export default function JobDetails({
               <h2 className="text-base font-bold text-[#121c28]">About this role</h2>
               <p className="text-sm text-[#464555] leading-relaxed whitespace-pre-line">
                 {job.description ||
-                  `Join ${job.employer?.name || "our team"} to work on impactful projects with cutting-edge engineering standards. We are looking for talented candidates who want to build high-performance, accessible, and scalable applications.`}
+                  `Join ${job.employer?.companyName || job.employer?.name || "our team"} to work on impactful projects with cutting-edge engineering standards. We are looking for talented candidates who want to build high-performance, accessible, and scalable applications.`}
               </p>
             </div>
 

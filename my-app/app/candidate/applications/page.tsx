@@ -99,7 +99,11 @@ export default function ApplicationTracker() {
       const titleMatch = (app.job?.title || "")
         .toLowerCase()
         .includes(searchQuery.toLowerCase());
-      const employerMatch = (app.job?.employer?.name || "")
+      const employerMatch = (
+        app.job?.employer?.companyName ||
+        app.job?.employer?.name ||
+        ""
+      )
         .toLowerCase()
         .includes(searchQuery.toLowerCase());
 

@@ -39,12 +39,14 @@ interface DashboardPayload {
 
 // Single centralized helper to fetch employer dashboard data and stats
 async function fetchDashboardPayload(): Promise<DashboardPayload> {
-  const [appsRes, jobsRes] = await Promise.all([
+  // ponytail: Fetch applications, jobs, and server-side stats concurrently
+  const [appsRes, jobsRes, statsRes] = await Promise.all([
     fetch("/api/applications"),
     fetch("/api/jobs?mine=true&limit=100"),
+    fetch("/api/employer/stats"),
   ]);
 
-  if (appsRes.status === 401 || jobsRes.status === 401) {
+  if (appsRes.status === 401 || jobsRes.status === 401 || statsRes.status === 401) {
     return { error: "Please log in to your employer account." };
   }
 
@@ -61,15 +63,10 @@ async function fetchDashboardPayload(): Promise<DashboardPayload> {
   const fetchedJobs: JobItem[] = jobsData.jobs || [];
 
   let fetchedStats: EmployerStatsResponse | null = null;
-  const employerId = fetchedJobs[0]?.employerId;
-
-  if (employerId) {
+  if (statsRes.ok) {
     try {
-      const statsRes = await fetch(`/api/employer/${employerId}/stats`);
-      if (statsRes.ok) {
-        const statsData = await statsRes.json();
-        fetchedStats = statsData.stats || statsData;
-      }
+      const statsData = await statsRes.json();
+      fetchedStats = statsData.stats || statsData;
     } catch {
       // Graceful fallback to computed stats
     }

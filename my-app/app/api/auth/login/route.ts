@@ -6,9 +6,18 @@ import { createAccessToken, createRefreshToken } from "@/lib/auth/tokens";
 import { createSession } from "@/lib/auth/session";
 
 export async function POST(request: Request) {
+  let body;
   try {
-    const body = await request.json();
-    const { email, password, role: requestedRole } = body;
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: "Invalid JSON request body" },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const { email, password, role: requestedRole } = body || {};
 
     if (!email || !password) {
       return NextResponse.json(
@@ -73,23 +82,11 @@ export async function POST(request: Request) {
     }
 
     const accessToken = createAccessToken(user.id, resolvedRole);
-    const temporarySessionId = crypto.randomUUID();
-    const refreshToken = createRefreshToken(user.id, temporarySessionId);
+    const sessionId = crypto.randomUUID();
+    const finalRefreshToken = createRefreshToken(user.id, sessionId);
 
-    const session = await createSession(user.id, resolvedRole, refreshToken);
-    const finalRefreshToken = createRefreshToken(user.id, session.id);
-
-    await prisma.session.update({
-      where: {
-        id: session.id,
-      },
-      data: {
-        refreshTokenHash: crypto
-          .createHash("sha256")
-          .update(finalRefreshToken)
-          .digest("hex"),
-      },
-    });
+    // ponytail: Single-roundtrip session creation avoiding redundant DB update
+    await createSession(user.id, resolvedRole, finalRefreshToken, sessionId);
 
     const response = NextResponse.json(
       {

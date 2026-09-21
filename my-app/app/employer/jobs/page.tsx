@@ -16,6 +16,7 @@ interface EmployerJobItem {
   employer?: {
     id: string;
     name: string;
+    companyName?: string | null;
   };
   _count?: {
     applications: number;
@@ -229,7 +230,7 @@ export default function ManageJobs() {
                   </h3>
 
                   <p className="text-xs text-[#464555] mb-4">
-                    {job.employer?.name || "Your Company"} • {job.location || "Remote / Hybrid"}
+                    {job.employer?.companyName || job.employer?.name || "Your Company"} • {job.location || "Remote / Hybrid"}
                   </p>
 
                   <div className="mt-auto pt-3 border-t border-[#c7c4d8]/40 flex justify-between items-center gap-2">

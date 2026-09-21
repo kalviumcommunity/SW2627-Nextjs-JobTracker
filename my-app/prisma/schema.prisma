@@ -61,6 +61,8 @@ model Job {
   createdAt    DateTime      @default(now())
 
   @@index([employerId])
+  @@index([createdAt(sort: Desc)])
+  @@index([location])
 }
 
 model Application {
@@ -77,4 +79,6 @@ model Application {
 
   @@unique([candidateId, jobId])
   @@index([jobId])
+  @@index([candidateId, status])
+  @@index([jobId, status])
 }
