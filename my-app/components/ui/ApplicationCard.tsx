@@ -18,6 +18,7 @@ export interface ApplicationData {
       id: string;
       name: string;
       email?: string;
+      companyName?: string | null;
     };
   };
 }
@@ -28,7 +29,10 @@ export interface ApplicationCardProps {
 
 export function ApplicationCard({ application }: ApplicationCardProps) {
   const jobTitle = application.job?.title || "Job Application";
-  const companyName = application.job?.employer?.name || "Verified Employer";
+  const companyName =
+    application.job?.employer?.companyName ||
+    application.job?.employer?.name ||
+    "Verified Employer";
   const appliedDate = application.createdAt
     ? getRelativeTimeString(new Date(application.createdAt))
     : "Recently applied";

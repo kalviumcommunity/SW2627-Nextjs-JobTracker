@@ -11,7 +11,8 @@ export function hashRefreshToken(refreshToken: string): string {
 export async function createSession(
   userId: string,
   role: "candidate" | "employer",
-  refreshToken: string
+  refreshToken: string,
+  sessionId?: string
 ) {
   const refreshTokenHash = hashRefreshToken(refreshToken);
 
@@ -20,6 +21,7 @@ export async function createSession(
 
   return prisma.session.create({
     data: {
+      ...(sessionId ? { id: sessionId } : {}),
       refreshTokenHash,
       expiresAt,
       ...(role === "candidate"

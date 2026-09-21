@@ -200,7 +200,7 @@ export default function CandidateDashboard() {
                       {app.job?.title || "Application"}
                     </h3>
                     <p className="text-xs text-[#464555]">
-                      {app.job?.employer?.name || "Verified Employer"}
+                      {app.job?.employer?.companyName || app.job?.employer?.name || "Verified Employer"}
                     </p>
                   </div>
                   <StatusBadge status={app.status} />
